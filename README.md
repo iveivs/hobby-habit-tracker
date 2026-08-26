@@ -11,8 +11,8 @@
 - скрытие привычки из таблицы;
 - статистика по количеству привычек, отметок и средней оценке;
 - локальное сохранение в браузере;
-- заготовка для Firebase Auth + Firestore, чтобы синхронизировать данные между
-  телефоном и компьютером;
+- Firebase Auth + Firestore для синхронизации данных между телефоном и
+  компьютером, когда заданы переменные `VITE_FIREBASE_*`;
 - сборка как статический сайт для GitHub Pages.
 
 ## Запуск
@@ -36,7 +36,8 @@ Pages, например из GitHub Actions.
 
 ## Firebase
 
-Пока файл `.env` не создан, приложение работает локально в текущем браузере.
+Пока Firebase-настройки не заданы, приложение работает локально в текущем
+браузере.
 Чтобы включить синхронизацию:
 
 1. Создай Firebase-проект.
@@ -44,6 +45,20 @@ Pages, например из GitHub Actions.
 3. Создай Firestore Database.
 4. Скопируй `.env.example` в `.env`.
 5. Заполни переменные `VITE_FIREBASE_*` из настроек Web App в Firebase.
+6. В Firebase Authentication добавь authorized domain `iveivs.github.io`.
+7. В GitHub репозитории добавь такие же значения в Settings -> Secrets and
+   variables -> Actions -> Repository secrets.
+
+Для GitHub Pages нужны repository secrets:
+
+```text
+VITE_FIREBASE_API_KEY
+VITE_FIREBASE_AUTH_DOMAIN
+VITE_FIREBASE_PROJECT_ID
+VITE_FIREBASE_STORAGE_BUCKET
+VITE_FIREBASE_MESSAGING_SENDER_ID
+VITE_FIREBASE_APP_ID
+```
 
 Приложение хранит данные в Firestore по пути:
 
