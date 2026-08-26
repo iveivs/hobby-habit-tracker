@@ -301,6 +301,19 @@ export function App() {
     setHabitToEdit(null);
   }
 
+  async function handleAuthClick() {
+    try {
+      if (userId) {
+        await signOutOfGoogle();
+        return;
+      }
+
+      await signInWithGoogle();
+    } catch {
+      setSyncStatus("Не удалось войти через Google");
+    }
+  }
+
   return (
     <main className="app-shell">
       <section className="topbar" aria-label="Обзор трекера">
@@ -324,7 +337,7 @@ export function App() {
             <button
               className="ghost-button"
               type="button"
-              onClick={() => (userId ? signOutOfGoogle() : signInWithGoogle())}
+              onClick={handleAuthClick}
             >
               {userId ? "Выйти" : "Войти"}
             </button>
