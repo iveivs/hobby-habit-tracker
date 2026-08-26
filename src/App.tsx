@@ -5,6 +5,7 @@ import {
   type FormEvent,
   type MouseEvent,
 } from "react";
+import { FirebaseError } from "firebase/app";
 import {
   hasFirebaseConfig,
   loadCloudState,
@@ -309,8 +310,12 @@ export function App() {
       }
 
       await signInWithGoogle();
-    } catch {
-      setSyncStatus("Не удалось войти через Google");
+    } catch (error) {
+      setSyncStatus(
+        error instanceof FirebaseError
+          ? `Ошибка входа: ${error.code}`
+          : "Не удалось войти через Google",
+      );
     }
   }
 

@@ -3,7 +3,7 @@ import {
   getAuth,
   GoogleAuthProvider,
   onAuthStateChanged,
-  signInWithPopup,
+  signInWithRedirect,
   signOut,
   type Auth,
   type User,
@@ -133,7 +133,7 @@ export function watchAuth(callback: (user: User | null) => void) {
 export async function signInWithGoogle() {
   const firebase = ensureFirebase();
   if (!firebase) return;
-  await signInWithPopup(firebase.auth, new GoogleAuthProvider());
+  await signInWithRedirect(firebase.auth, new GoogleAuthProvider());
 }
 
 export async function signOutOfGoogle() {
