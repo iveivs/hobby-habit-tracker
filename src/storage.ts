@@ -1,0 +1,157 @@
+import { initializeApp, type FirebaseApp } from "firebase/app";
+import {
+  getAuth,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  signInWithPopup,
+  signOut,
+  type Auth,
+  type User,
+} from "firebase/auth";
+import {
+  doc,
+  getDoc,
+  getFirestore,
+  onSnapshot,
+  setDoc,
+  type Firestore,
+} from "firebase/firestore";
+
+export type Score = 1 | 2 | 3 | 4 | 5;
+
+export type Habit = {
+  id: string;
+  name: string;
+  area: string;
+  color: string;
+  archived?: boolean;
+};
+
+export type HabitEntry = {
+  habitId: string;
+  date: string;
+  score: Score;
+};
+
+export type TrackerState = {
+  habits: Habit[];
+  entries: Record<string, HabitEntry>;
+  updatedAt: string;
+};
+
+const STORAGE_KEY = "hobby-habit-tracker-state-v1";
+
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+};
+
+export const hasFirebaseConfig = Boolean(
+  firebaseConfig.apiKey && firebaseConfig.authDomain && firebaseConfig.projectId,
+);
+
+let firebaseApp: FirebaseApp | null = null;
+let auth: Auth | null = null;
+let db: Firestore | null = null;
+
+function ensureFirebase() {
+  if (!hasFirebaseConfig) return null;
+  if (!firebaseApp) {
+    firebaseApp = initializeApp(firebaseConfig);
+    auth = getAuth(firebaseApp);
+    db = getFirestore(firebaseApp);
+  }
+  return { auth: auth!, db: db! };
+}
+
+export function makeEntryKey(habitId: string, date: string) {
+  return `${date}__${habitId}`;
+}
+
+export function createDefaultState(): TrackerState {
+  const today = new Date().toISOString().slice(0, 10);
+  const habits: Habit[] = [
+    { id: crypto.randomUUID(), name: "Гитара", area: "творчество", color: "#2f80ed" },
+    { id: crypto.randomUUID(), name: "Английский", area: "обучение", color: "#8f5bd3" },
+    { id: crypto.randomUUID(), name: "Спорт", area: "здоровье", color: "#2f9e6d" },
+    { id: crypto.randomUUID(), name: "Чтение", area: "восстановление", color: "#d46b32" },
+  ];
+
+  return {
+    habits,
+    entries: {
+      [makeEntryKey(habits[0].id, today)]: {
+        habitId: habits[0].id,
+        date: today,
+        score: 4,
+      },
+      [makeEntryKey(habits[2].id, today)]: {
+        habitId: habits[2].id,
+        date: today,
+        score: 5,
+      },
+    },
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+export function loadLocalState(): TrackerState {
+  const raw = window.localStorage.getItem(STORAGE_KEY);
+  if (!raw) return createDefaultState();
+
+  try {
+    return JSON.parse(raw) as TrackerState;
+  } catch {
+    return createDefaultState();
+  }
+}
+
+export function saveLocalState(state: TrackerState) {
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+export function watchAuth(callback: (user: User | null) => void) {
+  const firebase = ensureFirebase();
+  if (!firebase) return () => undefined;
+  return onAuthStateChanged(firebase.auth, callback);
+}
+
+export async function signInWithGoogle() {
+  const firebase = ensureFirebase();
+  if (!firebase) return;
+  await signInWithPopup(firebase.auth, new GoogleAuthProvider());
+}
+
+export async function signOutOfGoogle() {
+  const firebase = ensureFirebase();
+  if (!firebase) return;
+  await signOut(firebase.auth);
+}
+
+export function subscribeCloudState(
+  userId: string,
+  callback: (state: TrackerState | null) => void,
+) {
+  const firebase = ensureFirebase();
+  if (!firebase) return () => undefined;
+  return onSnapshot(doc(firebase.db, "users", userId, "tracker", "state"), (snapshot) => {
+    callback(snapshot.exists() ? (snapshot.data() as TrackerState) : null);
+  });
+}
+
+export async function loadCloudState(userId: string) {
+  const firebase = ensureFirebase();
+  if (!firebase) return null;
+  const snapshot = await getDoc(doc(firebase.db, "users", userId, "tracker", "state"));
+  return snapshot.exists() ? (snapshot.data() as TrackerState) : null;
+}
+
+export async function saveCloudState(userId: string, state: TrackerState) {
+  const firebase = ensureFirebase();
+  if (!firebase) return;
+  await setDoc(doc(firebase.db, "users", userId, "tracker", "state"), state);
+}
