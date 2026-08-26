@@ -42,12 +42,22 @@ export type TrackerState = {
 const STORAGE_KEY = "hobby-habit-tracker-state-v1";
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey:
+    import.meta.env.VITE_FIREBASE_API_KEY ||
+    "AIzaSyDfpChhZ8_U_KDtMxZpjjIW51lNTSq8d14",
+  authDomain:
+    import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ||
+    "hobby-habit-tracker-iveivs.firebaseapp.com",
+  projectId:
+    import.meta.env.VITE_FIREBASE_PROJECT_ID || "hobby-habit-tracker-iveivs",
+  storageBucket:
+    import.meta.env.VITE_FIREBASE_STORAGE_BUCKET ||
+    "hobby-habit-tracker-iveivs.firebasestorage.app",
+  messagingSenderId:
+    import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "47511057867",
+  appId:
+    import.meta.env.VITE_FIREBASE_APP_ID ||
+    "1:47511057867:web:ce698ea3632e4f1cef724e",
 };
 
 export const hasFirebaseConfig = Boolean(
