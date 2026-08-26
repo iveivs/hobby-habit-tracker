@@ -104,6 +104,15 @@ h2 {
   box-shadow: 0 0 0 5px rgba(56, 161, 105, 0.16);
 }
 
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 0 3px rgba(56, 161, 105, 0.16);
+}
+
 .ghost-button,
 .archive-button {
   border: 0;

@@ -2,7 +2,9 @@ import { initializeApp, type FirebaseApp } from "firebase/app";
 import {
   getAuth,
   GoogleAuthProvider,
+  getRedirectResult,
   onAuthStateChanged,
+  signInWithPopup,
   signInWithRedirect,
   signOut,
   type Auth,
@@ -130,10 +132,37 @@ export function watchAuth(callback: (user: User | null) => void) {
   return onAuthStateChanged(firebase.auth, callback);
 }
 
+export async function completeRedirectSignIn() {
+  const firebase = ensureFirebase();
+  if (!firebase) return null;
+  return getRedirectResult(firebase.auth);
+}
+
 export async function signInWithGoogle() {
   const firebase = ensureFirebase();
   if (!firebase) return;
-  await signInWithRedirect(firebase.auth, new GoogleAuthProvider());
+
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: "select_account" });
+
+  try {
+    await signInWithPopup(firebase.auth, provider);
+  } catch (error) {
+    const code = typeof error === "object" && error && "code" in error
+      ? String(error.code)
+      : "";
+
+    if (
+      code === "auth/popup-blocked" ||
+      code === "auth/popup-closed-by-user" ||
+      code === "auth/cancelled-popup-request"
+    ) {
+      await signInWithRedirect(firebase.auth, provider);
+      return;
+    }
+
+    throw error;
+  }
 }
 
 export async function signOutOfGoogle() {

@@ -7,6 +7,7 @@ import {
 } from "react";
 import { FirebaseError } from "firebase/app";
 import {
+  completeRedirectSignIn,
   hasFirebaseConfig,
   loadCloudState,
   loadLocalState,
@@ -94,6 +95,7 @@ export function App() {
   const [newArea, setNewArea] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
+  const [userPhoto, setUserPhoto] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState(
     hasFirebaseConfig ? "Можно войти через Google" : "Локальное хранение",
   );
@@ -111,9 +113,18 @@ export function App() {
   useEffect(() => {
     if (!hasFirebaseConfig) return;
 
+    void completeRedirectSignIn().catch((error) => {
+      setSyncStatus(
+        error instanceof FirebaseError
+          ? `Ошибка входа: ${error.code}`
+          : "Не удалось завершить вход через Google",
+      );
+    });
+
     return watchAuth(async (user) => {
       setUserId(user?.uid ?? null);
       setUserName(user?.displayName ?? user?.email ?? null);
+      setUserPhoto(user?.photoURL ?? null);
 
       if (!user) {
         setSyncStatus("Можно войти через Google");
@@ -327,7 +338,16 @@ export function App() {
           <h1>Хобби и привычки</h1>
         </div>
         <div className="sync-card">
-          <span className={`status-dot ${userId ? "online" : ""}`} />
+          {userPhoto ? (
+            <img
+              className="user-avatar"
+              src={userPhoto}
+              alt=""
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <span className={`status-dot ${userId ? "online" : ""}`} />
+          )}
           <div>
             <strong>{userName ?? syncStatus}</strong>
             <span>
