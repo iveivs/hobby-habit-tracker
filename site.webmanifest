@@ -1,0 +1,20 @@
+{
+  "name": "Hab-Hob",
+  "short_name": "Hab-Hob",
+  "description": "Личный трекер хобби и привычек с оценками выполнения.",
+  "icons": [
+    {
+      "src": "./brand-mark.svg",
+      "sizes": "64x64",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "./apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "theme_color": "#17231c",
+  "background_color": "#f2f7f3",
+  "display": "standalone"
+}
