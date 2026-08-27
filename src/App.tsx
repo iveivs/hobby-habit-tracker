@@ -52,11 +52,16 @@ const longHabitNameLimit = 38;
 type Theme = "light" | "dark";
 type AuthMode = "signin" | "signup";
 type ChartRange = "week" | "month" | "all";
+type ChartView = "donut" | "timeline";
 
 const chartRanges: Record<ChartRange, string> = {
   week: "Неделя",
   month: "Месяц",
   all: "Всё время",
+};
+const chartViews: Record<ChartView, string> = {
+  donut: "Круговая",
+  timeline: "По дням",
 };
 const appVersion = import.meta.env.VITE_APP_VERSION;
 const themeStorageKey = "hobby-habit-theme";
@@ -268,6 +273,7 @@ export function App() {
   const [nicknameDraft, setNicknameDraft] = useState("");
   const [chartHabit, setChartHabit] = useState<Habit | null>(null);
   const [chartRange, setChartRange] = useState<ChartRange>("week");
+  const [chartView, setChartView] = useState<ChartView>("donut");
 
   const dates = useMemo(() => getDateWindow(5, 4), []);
   const mobileDates = useMemo(() => getDateWindow(2, 3), []);
@@ -291,6 +297,11 @@ export function App() {
   const chartBestScore = chartPoints.length
     ? Math.max(...chartPoints.map((entry) => entry.score))
     : 0;
+  const chartScoreBreakdown = ([1, 2, 3, 4, 5] as Score[]).map((score) => ({
+    score,
+    count: chartPoints.filter((entry) => entry.score === score).length,
+  }));
+  const chartTotal = chartPoints.length;
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -581,6 +592,7 @@ export function App() {
   function openChart(habit: Habit) {
     setChartHabit(habit);
     setChartRange("week");
+    setChartView("donut");
   }
 
   async function handleAuthClick() {
@@ -1363,6 +1375,20 @@ export function App() {
                 </button>
               ))}
             </div>
+            <div className="chart-view-tabs" role="tablist" aria-label="Вид диаграммы">
+              {(Object.keys(chartViews) as ChartView[]).map((view) => (
+                <button
+                  className={chartView === view ? "active" : ""}
+                  key={view}
+                  type="button"
+                  role="tab"
+                  aria-selected={chartView === view}
+                  onClick={() => setChartView(view)}
+                >
+                  {chartViews[view]}
+                </button>
+              ))}
+            </div>
             <div className="chart-stats" aria-label="Статистика диаграммы">
               <span>
                 Отметок <strong>{chartPoints.length}</strong>
@@ -1375,25 +1401,86 @@ export function App() {
               </span>
             </div>
             {chartPoints.length ? (
-              <div className="chart-scroll">
-                <div className="chart-bars">
-                  {chartPoints.map((entry) => (
-                    <div className="chart-bar-item" key={`${entry.date}-${entry.score}`}>
-                      <div className="chart-bar-track">
-                        <span
-                          className="chart-bar"
-                          style={{
-                            height: `${entry.score * 20}%`,
-                            backgroundColor: scoreColors[entry.score],
-                          }}
-                        />
-                      </div>
-                      <strong>{entry.score}</strong>
-                      <span>{formatChartDate(entry.date)}</span>
+              chartView === "donut" ? (
+                <div className="donut-chart-layout">
+                  <div className="donut-chart-wrap" aria-hidden="true">
+                    <svg
+                      className="donut-chart"
+                      viewBox="0 0 120 120"
+                      role="presentation"
+                    >
+                      <circle
+                        className="donut-chart-base"
+                        cx="60"
+                        cy="60"
+                        r="42"
+                        pathLength="100"
+                      />
+                      {chartScoreBreakdown.map((item, index) => {
+                        if (!chartTotal || item.count === 0) return null;
+                        const offset =
+                          chartScoreBreakdown
+                            .slice(0, index)
+                            .reduce((sum, part) => sum + part.count, 0) /
+                          chartTotal;
+                        return (
+                          <circle
+                            key={item.score}
+                            className="donut-chart-segment"
+                            cx="60"
+                            cy="60"
+                            r="42"
+                            pathLength="100"
+                            stroke={scoreColors[item.score]}
+                            strokeDasharray={`${(item.count / chartTotal) * 100} 100`}
+                            strokeDashoffset={`${25 - offset * 100}`}
+                          />
+                        );
+                      })}
+                    </svg>
+                    <div className="donut-chart-center">
+                      <strong>{chartAverage}</strong>
+                      <span>средняя</span>
                     </div>
-                  ))}
+                  </div>
+                  <div className="donut-legend" aria-label="Распределение оценок">
+                    {chartScoreBreakdown.map((item) => (
+                      <div className="donut-legend-row" key={item.score}>
+                        <span className="donut-legend-main">
+                          <i style={{ backgroundColor: scoreColors[item.score] }} />
+                          {item.score} - {scoreLabels[item.score]}
+                        </span>
+                        <strong>
+                          {item.count}
+                          {chartTotal
+                            ? ` · ${Math.round((item.count / chartTotal) * 100)}%`
+                            : ""}
+                        </strong>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="chart-scroll">
+                  <div className="chart-bars">
+                    {chartPoints.map((entry) => (
+                      <div className="chart-bar-item" key={`${entry.date}-${entry.score}`}>
+                        <div className="chart-bar-track">
+                          <span
+                            className="chart-bar"
+                            style={{
+                              height: `${entry.score * 20}%`,
+                              backgroundColor: scoreColors[entry.score],
+                            }}
+                          />
+                        </div>
+                        <strong>{entry.score}</strong>
+                        <span>{formatChartDate(entry.date)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
             ) : (
               <div className="chart-empty">
                 Пока нет оценок за выбранный период.
