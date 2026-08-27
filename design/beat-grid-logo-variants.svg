@@ -1,0 +1,208 @@
+<svg width="1600" height="1800" viewBox="0 0 1600 1800" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1600" height="1800" fill="#F4F8F4"/>
+  <text x="80" y="92" fill="#17231C" font-family="Inter, Arial, sans-serif" font-size="48" font-weight="900">Hab-Hob</text>
+  <text x="80" y="132" fill="#637166" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">beat grid logo variants</text>
+
+  <defs>
+    <style>
+      .card { fill: #fff; stroke: #dce4dd; stroke-width: 2; }
+      .label { fill: #637166; font: 800 18px Inter, Arial, sans-serif; }
+      .name { fill: #17231c; font: 950 52px Inter, Arial, sans-serif; letter-spacing: 0; }
+      .caption { fill: #637166; font: 700 18px Inter, Arial, sans-serif; letter-spacing: 0; }
+      .ink { fill: #17231c; }
+      .blue { fill: #4b8fe2; }
+      .yellow { fill: #e8cf52; }
+      .red { fill: #e66767; }
+      .green { fill: #70b86f; }
+      .orange { fill: #f0a24a; }
+      .white { fill: #f7faf7; }
+      .mint { fill: #7fc09b; }
+    </style>
+
+    <g id="grid-classic">
+      <rect width="152" height="152" rx="36" class="ink"/>
+      <rect x="35" y="35" width="26" height="26" rx="8" class="blue"/>
+      <rect x="63" y="35" width="26" height="26" rx="8" class="yellow"/>
+      <rect x="91" y="35" width="26" height="26" rx="8" class="red"/>
+      <rect x="35" y="63" width="26" height="26" rx="8" class="green"/>
+      <rect x="63" y="63" width="26" height="26" rx="8" class="green"/>
+      <rect x="91" y="63" width="26" height="26" rx="8" class="blue"/>
+      <rect x="35" y="91" width="26" height="26" rx="8" class="orange"/>
+      <rect x="63" y="91" width="26" height="26" rx="8" class="white"/>
+      <rect x="91" y="91" width="26" height="26" rx="8" class="green"/>
+    </g>
+
+    <g id="grid-spacious">
+      <rect width="152" height="152" rx="34" class="ink"/>
+      <rect x="31" y="31" width="30" height="30" rx="9" class="blue"/>
+      <rect x="61" y="31" width="30" height="30" rx="9" class="yellow"/>
+      <rect x="91" y="31" width="30" height="30" rx="9" class="red"/>
+      <rect x="31" y="61" width="30" height="30" rx="9" class="green"/>
+      <rect x="61" y="61" width="30" height="30" rx="9" class="green"/>
+      <rect x="91" y="61" width="30" height="30" rx="9" class="blue"/>
+      <rect x="31" y="91" width="30" height="30" rx="9" class="orange"/>
+      <rect x="61" y="91" width="30" height="30" rx="9" class="white"/>
+      <rect x="91" y="91" width="30" height="30" rx="9" class="green"/>
+    </g>
+
+    <g id="grid-soft">
+      <rect width="152" height="152" rx="46" class="ink"/>
+      <circle cx="46" cy="46" r="15" class="blue"/>
+      <circle cx="76" cy="46" r="15" class="yellow"/>
+      <circle cx="106" cy="46" r="15" class="red"/>
+      <circle cx="46" cy="76" r="15" class="green"/>
+      <circle cx="76" cy="76" r="15" class="green"/>
+      <circle cx="106" cy="76" r="15" class="blue"/>
+      <circle cx="46" cy="106" r="15" class="orange"/>
+      <circle cx="76" cy="106" r="15" class="white"/>
+      <circle cx="106" cy="106" r="15" class="green"/>
+    </g>
+
+    <g id="grid-bars">
+      <rect width="152" height="152" rx="36" class="ink"/>
+      <rect x="32" y="42" width="22" height="26" rx="8" class="blue"/>
+      <rect x="65" y="32" width="22" height="36" rx="8" class="yellow"/>
+      <rect x="98" y="50" width="22" height="18" rx="8" class="red"/>
+      <rect x="32" y="77" width="22" height="34" rx="8" class="green"/>
+      <rect x="65" y="77" width="22" height="22" rx="8" class="green"/>
+      <rect x="98" y="77" width="22" height="42" rx="8" class="blue"/>
+    </g>
+
+    <g id="grid-diagonal">
+      <rect width="152" height="152" rx="36" class="ink"/>
+      <rect x="32" y="32" width="27" height="27" rx="9" class="blue"/>
+      <rect x="63" y="32" width="27" height="27" rx="9" class="white" opacity="0.32"/>
+      <rect x="94" y="32" width="27" height="27" rx="9" class="white" opacity="0.32"/>
+      <rect x="32" y="63" width="27" height="27" rx="9" class="green"/>
+      <rect x="63" y="63" width="27" height="27" rx="9" class="yellow"/>
+      <rect x="94" y="63" width="27" height="27" rx="9" class="white" opacity="0.32"/>
+      <rect x="32" y="94" width="27" height="27" rx="9" class="orange"/>
+      <rect x="63" y="94" width="27" height="27" rx="9" class="green"/>
+      <rect x="94" y="94" width="27" height="27" rx="9" class="red"/>
+    </g>
+
+    <g id="grid-hh">
+      <rect width="152" height="152" rx="36" class="ink"/>
+      <rect x="32" y="32" width="24" height="88" rx="8" class="blue"/>
+      <rect x="58" y="64" width="36" height="24" rx="8" class="yellow"/>
+      <rect x="96" y="32" width="24" height="88" rx="8" class="green"/>
+      <rect x="42" y="98" width="24" height="24" rx="8" class="orange"/>
+      <rect x="86" y="32" width="24" height="24" rx="8" class="red"/>
+    </g>
+
+    <g id="grid-frame">
+      <rect width="152" height="152" rx="36" class="ink"/>
+      <rect x="30" y="30" width="92" height="92" rx="22" fill="none" stroke="#f7faf7" stroke-width="8"/>
+      <rect x="43" y="43" width="21" height="21" rx="7" class="blue"/>
+      <rect x="66" y="43" width="21" height="21" rx="7" class="yellow"/>
+      <rect x="89" y="43" width="21" height="21" rx="7" class="red"/>
+      <rect x="43" y="66" width="21" height="21" rx="7" class="green"/>
+      <rect x="66" y="66" width="21" height="21" rx="7" class="green"/>
+      <rect x="89" y="66" width="21" height="21" rx="7" class="blue"/>
+      <rect x="43" y="89" width="21" height="21" rx="7" class="orange"/>
+      <rect x="66" y="89" width="21" height="21" rx="7" class="white"/>
+      <rect x="89" y="89" width="21" height="21" rx="7" class="green"/>
+    </g>
+
+    <g id="grid-mini">
+      <rect width="152" height="152" rx="36" class="ink"/>
+      <rect x="37" y="37" width="20" height="20" rx="7" class="blue"/>
+      <rect x="66" y="37" width="20" height="20" rx="7" class="yellow"/>
+      <rect x="95" y="37" width="20" height="20" rx="7" class="red"/>
+      <rect x="37" y="66" width="20" height="20" rx="7" class="green"/>
+      <rect x="66" y="66" width="20" height="20" rx="7" class="green"/>
+      <rect x="95" y="66" width="20" height="20" rx="7" class="blue"/>
+      <rect x="37" y="95" width="20" height="20" rx="7" class="orange"/>
+      <rect x="66" y="95" width="20" height="20" rx="7" class="white"/>
+      <rect x="95" y="95" width="20" height="20" rx="7" class="green"/>
+    </g>
+  </defs>
+
+  <g transform="translate(80 190)">
+    <rect width="330" height="310" rx="24" class="card"/>
+    <text x="24" y="42" class="label">01 / classic grid</text>
+    <use href="#grid-classic" x="89" y="70"/>
+    <text x="50" y="270" class="name">Hab-Hob</text>
+  </g>
+
+  <g transform="translate(450 190)">
+    <rect width="330" height="310" rx="24" class="card"/>
+    <text x="24" y="42" class="label">02 / more air</text>
+    <use href="#grid-spacious" x="89" y="70"/>
+    <text x="50" y="270" class="name">Hab-Hob</text>
+  </g>
+
+  <g transform="translate(820 190)">
+    <rect width="330" height="310" rx="24" class="card"/>
+    <text x="24" y="42" class="label">03 / soft dots</text>
+    <use href="#grid-soft" x="89" y="70"/>
+    <text x="50" y="270" class="name">Hab-Hob</text>
+  </g>
+
+  <g transform="translate(1190 190)">
+    <rect width="330" height="310" rx="24" class="card"/>
+    <text x="24" y="42" class="label">04 / bars</text>
+    <use href="#grid-bars" x="89" y="70"/>
+    <text x="50" y="270" class="name">Hab-Hob</text>
+  </g>
+
+  <g transform="translate(80 540)">
+    <rect width="330" height="310" rx="24" class="card"/>
+    <text x="24" y="42" class="label">05 / diagonal progress</text>
+    <use href="#grid-diagonal" x="89" y="70"/>
+    <text x="50" y="270" class="name">Hab-Hob</text>
+  </g>
+
+  <g transform="translate(450 540)">
+    <rect width="330" height="310" rx="24" class="card"/>
+    <text x="24" y="42" class="label">06 / hidden HH</text>
+    <use href="#grid-hh" x="89" y="70"/>
+    <text x="50" y="270" class="name">Hab-Hob</text>
+  </g>
+
+  <g transform="translate(820 540)">
+    <rect width="330" height="310" rx="24" class="card"/>
+    <text x="24" y="42" class="label">07 / framed grid</text>
+    <use href="#grid-frame" x="89" y="70"/>
+    <text x="50" y="270" class="name">Hab-Hob</text>
+  </g>
+
+  <g transform="translate(1190 540)">
+    <rect width="330" height="310" rx="24" class="card"/>
+    <text x="24" y="42" class="label">08 / compact grid</text>
+    <use href="#grid-mini" x="89" y="70"/>
+    <text x="50" y="270" class="name">Hab-Hob</text>
+  </g>
+
+  <g transform="translate(80 920)">
+    <rect width="700" height="220" rx="24" class="card"/>
+    <use href="#grid-classic" x="40" y="34"/>
+    <text x="230" y="105" class="name" font-size="68">Hab-Hob</text>
+    <text x="232" y="144" class="caption">habit rhythm, hobby progress</text>
+  </g>
+
+  <g transform="translate(820 920)">
+    <rect width="700" height="220" rx="24" class="card"/>
+    <use href="#grid-spacious" x="40" y="34"/>
+    <text x="230" y="105" class="name" font-size="68">HabHob</text>
+    <text x="232" y="144" class="caption">same name, cleaner product spelling</text>
+  </g>
+
+  <g transform="translate(80 1190)">
+    <rect width="700" height="220" rx="24" class="card"/>
+    <use href="#grid-frame" x="40" y="34"/>
+    <text x="230" y="105" class="name" font-size="68">Hab-Hob</text>
+    <text x="232" y="144" class="caption">more app-icon, less toy-like</text>
+  </g>
+
+  <g transform="translate(820 1190)">
+    <rect width="700" height="220" rx="24" class="card"/>
+    <use href="#grid-mini" x="40" y="34"/>
+    <text x="230" y="105" class="name" font-size="68">Hab-Hob</text>
+    <text x="232" y="144" class="caption">small favicon-friendly version</text>
+  </g>
+
+  <g transform="translate(80 1480)">
+    <text x="0" y="0" class="caption">My current shortlist: 02 for main app icon, 10 for header wordmark, 12 for favicon.</text>
+  </g>
+</svg>

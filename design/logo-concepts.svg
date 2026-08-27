@@ -1,0 +1,90 @@
+<svg width="1440" height="1040" viewBox="0 0 1440 1040" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1440" height="1040" fill="#F4F8F4"/>
+  <text x="72" y="86" fill="#17231C" font-family="Inter, Arial, sans-serif" font-size="42" font-weight="900">Hab-Hob logo concepts</text>
+  <text x="72" y="126" fill="#637166" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="700">Habit + Hobby, rhythm + progress</text>
+
+  <g transform="translate(72 176)">
+    <rect width="390" height="330" rx="24" fill="#FFFFFF" stroke="#DCE4DD" stroke-width="2"/>
+    <text x="28" y="48" fill="#637166" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="800">01 / beat grid</text>
+    <g transform="translate(118 82)">
+      <rect width="154" height="154" rx="34" fill="#17231C"/>
+      <rect x="34" y="34" width="28" height="28" rx="8" fill="#4B8FE2"/>
+      <rect x="72" y="34" width="28" height="28" rx="8" fill="#E8CF52"/>
+      <rect x="110" y="34" width="28" height="28" rx="8" fill="#E66767"/>
+      <rect x="34" y="72" width="28" height="28" rx="8" fill="#70B86F"/>
+      <rect x="72" y="72" width="28" height="28" rx="8" fill="#70B86F"/>
+      <rect x="110" y="72" width="28" height="28" rx="8" fill="#4B8FE2"/>
+      <rect x="34" y="110" width="28" height="28" rx="8" fill="#F0A24A"/>
+      <rect x="72" y="110" width="28" height="28" rx="8" fill="#F7FAF7"/>
+      <rect x="110" y="110" width="28" height="28" rx="8" fill="#70B86F"/>
+    </g>
+    <text x="78" y="280" fill="#17231C" font-family="Inter, Arial, sans-serif" font-size="48" font-weight="900">Hab-Hob</text>
+  </g>
+
+  <g transform="translate(526 176)">
+    <rect width="390" height="330" rx="24" fill="#FFFFFF" stroke="#DCE4DD" stroke-width="2"/>
+    <text x="28" y="48" fill="#637166" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="800">02 / double H</text>
+    <g transform="translate(118 82)">
+      <rect width="154" height="154" rx="34" fill="#17231C"/>
+      <path d="M44 42V112M44 77H74M74 42V112" stroke="#F7FAF7" stroke-width="14" stroke-linecap="round"/>
+      <path d="M90 42V112M90 77H120M120 42V112" stroke="#7FC09B" stroke-width="14" stroke-linecap="round"/>
+      <circle cx="77" cy="77" r="8" fill="#E8CF52"/>
+    </g>
+    <text x="78" y="280" fill="#17231C" font-family="Inter, Arial, sans-serif" font-size="48" font-weight="900">Hab-Hob</text>
+  </g>
+
+  <g transform="translate(980 176)">
+    <rect width="390" height="330" rx="24" fill="#FFFFFF" stroke="#DCE4DD" stroke-width="2"/>
+    <text x="28" y="48" fill="#637166" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="800">03 / rhythm bars</text>
+    <g transform="translate(118 82)">
+      <rect width="154" height="154" rx="34" fill="#17231C"/>
+      <rect x="35" y="76" width="14" height="42" rx="7" fill="#4B8FE2"/>
+      <rect x="58" y="48" width="14" height="70" rx="7" fill="#E8CF52"/>
+      <rect x="81" y="62" width="14" height="56" rx="7" fill="#70B86F"/>
+      <rect x="104" y="34" width="14" height="84" rx="7" fill="#E66767"/>
+      <path d="M32 126H124" stroke="#F7FAF7" stroke-width="8" stroke-linecap="round"/>
+    </g>
+    <text x="78" y="280" fill="#17231C" font-family="Inter, Arial, sans-serif" font-size="48" font-weight="900">Hab-Hob</text>
+  </g>
+
+  <g transform="translate(72 568)">
+    <rect width="390" height="330" rx="24" fill="#FFFFFF" stroke="#DCE4DD" stroke-width="2"/>
+    <text x="28" y="48" fill="#637166" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="800">04 / wordmark only</text>
+    <g transform="translate(62 102)">
+      <text x="0" y="76" fill="#17231C" font-family="Inter, Arial, sans-serif" font-size="68" font-weight="950">Hab</text>
+      <rect x="128" y="34" width="56" height="14" rx="7" fill="#E8CF52"/>
+      <rect x="128" y="58" width="56" height="14" rx="7" fill="#70B86F"/>
+      <rect x="128" y="82" width="56" height="14" rx="7" fill="#4B8FE2"/>
+      <text x="204" y="76" fill="#17231C" font-family="Inter, Arial, sans-serif" font-size="68" font-weight="950">Hob</text>
+    </g>
+    <text x="72" y="264" fill="#637166" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700">clean, app-store friendly</text>
+  </g>
+
+  <g transform="translate(526 568)">
+    <rect width="390" height="330" rx="24" fill="#FFFFFF" stroke="#DCE4DD" stroke-width="2"/>
+    <text x="28" y="48" fill="#637166" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="800">05 / loop mark</text>
+    <g transform="translate(118 82)">
+      <rect width="154" height="154" rx="34" fill="#17231C"/>
+      <path d="M42 78C42 55 57 43 77 43C97 43 112 55 112 78C112 101 97 113 77 113C57 113 42 101 42 78Z" stroke="#F7FAF7" stroke-width="12"/>
+      <path d="M77 43C97 43 112 55 112 78C112 101 97 113 77 113" stroke="#70B86F" stroke-width="12" stroke-linecap="round"/>
+      <circle cx="77" cy="43" r="9" fill="#E8CF52"/>
+      <circle cx="112" cy="78" r="9" fill="#4B8FE2"/>
+    </g>
+    <text x="78" y="280" fill="#17231C" font-family="Inter, Arial, sans-serif" font-size="48" font-weight="900">Hab-Hob</text>
+  </g>
+
+  <g transform="translate(980 568)">
+    <rect width="390" height="330" rx="24" fill="#FFFFFF" stroke="#DCE4DD" stroke-width="2"/>
+    <text x="28" y="48" fill="#637166" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="800">06 / calendar pulse</text>
+    <g transform="translate(118 82)">
+      <rect width="154" height="154" rx="34" fill="#17231C"/>
+      <rect x="34" y="42" width="86" height="78" rx="16" fill="#F7FAF7"/>
+      <path d="M34 64H120" stroke="#17231C" stroke-width="10"/>
+      <circle cx="54" cy="88" r="8" fill="#E66767"/>
+      <circle cx="77" cy="88" r="8" fill="#F0A24A"/>
+      <circle cx="100" cy="88" r="8" fill="#70B86F"/>
+      <path d="M49 108H105" stroke="#4B8FE2" stroke-width="9" stroke-linecap="round"/>
+    </g>
+    <text x="78" y="280" fill="#17231C" font-family="Inter, Arial, sans-serif" font-size="48" font-weight="900">Hab-Hob</text>
+  </g>
+</svg>

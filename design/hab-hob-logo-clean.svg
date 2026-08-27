@@ -1,0 +1,18 @@
+<svg width="900" height="720" viewBox="0 0 900 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="900" height="720" fill="#F4F8F4"/>
+  <g transform="translate(285 96)">
+    <rect width="330" height="330" rx="78" fill="#17231C"/>
+    <g transform="translate(60 60)">
+      <rect x="0" y="0" width="54" height="54" rx="15" fill="#4B8FE2"/>
+      <rect x="78" y="0" width="54" height="54" rx="15" fill="#E8CF52"/>
+      <rect x="156" y="0" width="54" height="54" rx="15" fill="#E66767"/>
+      <rect x="0" y="78" width="54" height="54" rx="15" fill="#70B86F"/>
+      <rect x="78" y="78" width="54" height="54" rx="15" fill="#70B86F"/>
+      <rect x="156" y="78" width="54" height="54" rx="15" fill="#4B8FE2"/>
+      <rect x="0" y="156" width="54" height="54" rx="15" fill="#F0A24A"/>
+      <rect x="78" y="156" width="54" height="54" rx="15" fill="#F7FAF7"/>
+      <rect x="156" y="156" width="54" height="54" rx="15" fill="#70B86F"/>
+    </g>
+  </g>
+  <text x="450" y="574" fill="#17231C" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="108" font-weight="950" letter-spacing="0">Hab-Hob</text>
+</svg>

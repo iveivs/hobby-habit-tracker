@@ -128,9 +128,17 @@ h1 {
 
 .title-row {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+.brand-mark {
+  width: clamp(44px, 5vw, 64px);
+  height: clamp(44px, 5vw, 64px);
+  flex: 0 0 auto;
+  border-radius: 16px;
+  box-shadow: 0 12px 32px var(--shadow-card);
 }
 
 .version-badge {
@@ -971,7 +979,7 @@ h2 {
 
 @media (max-width: 520px) {
   h1 {
-    font-size: 34px;
+    font-size: 42px;
   }
 
   .summary-grid {
