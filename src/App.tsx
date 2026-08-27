@@ -74,12 +74,12 @@ function dateKey(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
-function getVisibleDates() {
+function getDateWindow(daysBefore: number, daysAfter: number) {
   const dates: Date[] = [];
   const today = new Date();
-  for (let offset = 13; offset >= 0; offset -= 1) {
+  for (let offset = -daysBefore; offset <= daysAfter; offset += 1) {
     const date = new Date(today);
-    date.setDate(today.getDate() - offset);
+    date.setDate(today.getDate() + offset);
     dates.push(date);
   }
   return dates;
@@ -108,11 +108,11 @@ function getStats(state: TrackerState) {
 }
 
 function formatSubskillCount(count: number) {
-  if (count % 10 === 1 && count % 100 !== 11) return `${count} поднавык`;
+  if (count % 10 === 1 && count % 100 !== 11) return `${count} упражнение`;
   if ([2, 3, 4].includes(count % 10) && ![12, 13, 14].includes(count % 100)) {
-    return `${count} поднавыка`;
+    return `${count} упражнения`;
   }
-  return `${count} поднавыков`;
+  return `${count} упражнений`;
 }
 
 function getAuthErrorMessage(error: unknown) {
@@ -133,19 +133,14 @@ function getAuthErrorMessage(error: unknown) {
   return `Ошибка входа: ${error.code}`;
 }
 
-function getVisibleHabitRows(habits: Habit[]): HabitRow[] {
+function getActiveHabits(habits: Habit[]) {
+  return habits.filter((habit) => !habit.archived);
+}
+
+function getChildrenByParent(habits: Habit[]) {
   const activeHabits = habits.filter((habit) => !habit.archived);
-  const childCountByParent = new Map<string, number>();
-
-  activeHabits.forEach((habit) => {
-    if (!habit.parentId) return;
-    childCountByParent.set(
-      habit.parentId,
-      (childCountByParent.get(habit.parentId) ?? 0) + 1,
-    );
-  });
-
   const childrenByParent = new Map<string, Habit[]>();
+
   activeHabits.forEach((habit) => {
     if (!habit.parentId) return;
     const siblings = childrenByParent.get(habit.parentId) ?? [];
@@ -153,19 +148,31 @@ function getVisibleHabitRows(habits: Habit[]): HabitRow[] {
     childrenByParent.set(habit.parentId, siblings);
   });
 
+  return childrenByParent;
+}
+
+function getVisibleHabitRows(
+  habits: Habit[],
+  expandedProjects: Set<string>,
+): HabitRow[] {
+  const activeHabits = getActiveHabits(habits);
+  const childrenByParent = getChildrenByParent(habits);
+
   return activeHabits.flatMap((habit) => {
     if (habit.parentId) return [];
 
     const projectRow: HabitRow = {
       ...habit,
       depth: 0,
-      childCount: childCountByParent.get(habit.id) ?? 0,
+      childCount: childrenByParent.get(habit.id)?.length ?? 0,
     };
-    const childRows = (childrenByParent.get(habit.id) ?? []).map((child) => ({
-      ...child,
-      depth: 1,
-      childCount: 0,
-    }));
+    const childRows = expandedProjects.has(habit.id)
+      ? (childrenByParent.get(habit.id) ?? []).map((child) => ({
+          ...child,
+          depth: 1,
+          childCount: 0,
+        }))
+      : [];
 
     return [projectRow, ...childRows];
   });
@@ -174,6 +181,9 @@ function getVisibleHabitRows(habits: Habit[]): HabitRow[] {
 export function App() {
   const [state, setState] = useState<TrackerState>(() => loadLocalState());
   const [theme, setTheme] = useState<Theme>(() => loadTheme());
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [newHabit, setNewHabit] = useState("");
   const [newArea, setNewArea] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
@@ -191,8 +201,13 @@ export function App() {
   const [editArea, setEditArea] = useState("");
   const [newSkillName, setNewSkillName] = useState("");
 
-  const dates = useMemo(() => getVisibleDates(), []);
-  const visibleHabits = getVisibleHabitRows(state.habits);
+  const dates = useMemo(() => getDateWindow(7, 6), []);
+  const mobileDates = useMemo(() => getDateWindow(2, 3), []);
+  const todayKey = dateKey(new Date());
+  const activeHabits = getActiveHabits(state.habits);
+  const childrenByParent = getChildrenByParent(state.habits);
+  const rootHabits = activeHabits.filter((habit) => !habit.parentId);
+  const visibleHabits = getVisibleHabitRows(state.habits, expandedProjects);
   const stats = getStats(state);
 
   useEffect(() => {
@@ -397,7 +412,7 @@ export function App() {
     const habit: Habit = {
       id: crypto.randomUUID(),
       name,
-      area: "поднавык",
+      area: "упражнение",
       color: parentForNewSkill.color,
       parentId: parentForNewSkill.id,
     };
@@ -459,6 +474,18 @@ export function App() {
     setTheme((currentTheme) => (currentTheme === "light" ? "dark" : "light"));
   }
 
+  function toggleProject(projectId: string) {
+    setExpandedProjects((currentProjects) => {
+      const nextProjects = new Set(currentProjects);
+      if (nextProjects.has(projectId)) {
+        nextProjects.delete(projectId);
+      } else {
+        nextProjects.add(projectId);
+      }
+      return nextProjects;
+    });
+  }
+
   return (
     <main className="app-shell">
       <section className="topbar" aria-label="Обзор трекера">
@@ -478,8 +505,11 @@ export function App() {
             }
             onClick={toggleTheme}
           >
-            <span className={theme === "light" ? "active" : ""}>Светлая</span>
-            <span className={theme === "dark" ? "active" : ""}>Тёмная</span>
+            <span className="theme-track" aria-hidden="true">
+              <span className="theme-thumb" />
+              <span>☀︎</span>
+              <span>☾</span>
+            </span>
           </button>
           <div className="sync-card">
             {userPhoto ? (
@@ -559,7 +589,10 @@ export function App() {
               <tr>
                 <th className="habit-heading">Проект / навык</th>
                 {dates.map((date) => (
-                  <th key={dateKey(date)}>
+                  <th
+                    key={dateKey(date)}
+                    className={dateKey(date) === todayKey ? "today-column" : ""}
+                  >
                     <span>{formatWeekday(date)}</span>
                     <strong>{formatDay(date)}</strong>
                   </th>
@@ -583,6 +616,21 @@ export function App() {
                     />
                     <div className="habit-copy">
                       <div className="habit-title-row">
+                        {!habit.parentId && habit.childCount ? (
+                          <button
+                            className="expand-button"
+                            type="button"
+                            aria-label={
+                              expandedProjects.has(habit.id)
+                                ? `Свернуть упражнения ${habit.name}`
+                                : `Раскрыть упражнения ${habit.name}`
+                            }
+                            aria-expanded={expandedProjects.has(habit.id)}
+                            onClick={() => toggleProject(habit.id)}
+                          >
+                            {expandedProjects.has(habit.id) ? "⌄" : "›"}
+                          </button>
+                        ) : null}
                         <strong className="habit-title">{habit.name}</strong>
                         {habit.name.length > longHabitNameLimit ? (
                           <button
@@ -606,7 +654,7 @@ export function App() {
                           <button
                             className="add-subskill-button"
                             type="button"
-                            aria-label={`Добавить поднавык в ${habit.name}`}
+                            aria-label={`Добавить упражнение в ${habit.name}`}
                             onClick={() => startAddingSubSkill(habit)}
                           >
                             +
@@ -633,6 +681,7 @@ export function App() {
                       <td key={key}>
                         <button
                           className="score-cell"
+                          data-today={day === todayKey ? "true" : undefined}
                           style={{
                             backgroundColor: entry
                               ? scoreColors[entry.score]
@@ -664,6 +713,130 @@ export function App() {
             </tbody>
           </table>
         </div>
+      </section>
+
+      <section className="mobile-tracker" aria-label="Навыки по дням">
+        {rootHabits.map((habit) => {
+          const children = childrenByParent.get(habit.id) ?? [];
+          const isExpanded = expandedProjects.has(habit.id);
+          const habitsToShow = isExpanded ? [habit, ...children] : [habit];
+
+          return (
+            <article className="mobile-skill-card" key={habit.id}>
+              <button
+                className="mobile-skill-header"
+                type="button"
+                aria-expanded={isExpanded}
+                onClick={() => children.length && toggleProject(habit.id)}
+              >
+                <span
+                  className="habit-mark"
+                  style={{ backgroundColor: habit.color }}
+                />
+                <span className="mobile-skill-copy">
+                  <strong>{habit.name}</strong>
+                  <span>
+                    {children.length
+                      ? `${habit.area} · ${formatSubskillCount(children.length)}`
+                      : habit.area}
+                  </span>
+                </span>
+                <span className="mobile-expand-indicator" aria-hidden="true">
+                  {children.length ? (isExpanded ? "⌄" : "›") : ""}
+                </span>
+              </button>
+
+              <div className="mobile-skill-actions">
+                <button
+                  className="secondary-button compact-button"
+                  type="button"
+                  onClick={() => startEditingHabit(habit)}
+                >
+                  Изменить
+                </button>
+                <button
+                  className="secondary-button compact-button"
+                  type="button"
+                  onClick={() => startAddingSubSkill(habit)}
+                >
+                  Упражнение
+                </button>
+                <button
+                  className="archive-button mobile-delete-button"
+                  type="button"
+                  aria-label={`Удалить ${habit.name}`}
+                  onClick={() => setHabitToDelete(habit)}
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="mobile-skill-stack">
+                {habitsToShow.map((rowHabit) => (
+                  <div
+                    className={
+                      rowHabit.parentId ? "mobile-day-row child" : "mobile-day-row"
+                    }
+                    key={rowHabit.id}
+                  >
+                    {rowHabit.parentId ? (
+                      <div className="mobile-child-title">
+                        <span
+                          className="habit-mark"
+                          style={{ backgroundColor: rowHabit.color }}
+                        />
+                        <strong>{rowHabit.name}</strong>
+                        <button
+                          className="edit-button"
+                          type="button"
+                          aria-label={`Редактировать ${rowHabit.name}`}
+                          onClick={() => startEditingHabit(rowHabit)}
+                        >
+                          ✎
+                        </button>
+                      </div>
+                    ) : null}
+                    <div className="mobile-days">
+                      {mobileDates.map((date) => {
+                        const day = dateKey(date);
+                        const key = makeEntryKey(rowHabit.id, day);
+                        const entry = state.entries[key];
+                        return (
+                          <div
+                            className={
+                              day === todayKey ? "mobile-day today" : "mobile-day"
+                            }
+                            key={key}
+                          >
+                            <span>
+                              {formatWeekday(date)}
+                              <strong>{formatDay(date)}</strong>
+                            </span>
+                            <button
+                              className="score-cell"
+                              style={{
+                                backgroundColor: entry
+                                  ? scoreColors[entry.score]
+                                  : "transparent",
+                              }}
+                              type="button"
+                              aria-label={`${rowHabit.name}, ${formatDay(date)}`}
+                              onClick={(event) =>
+                                togglePicker(event, key, rowHabit.id, day)
+                              }
+                            >
+                              {entry?.score ?? ""}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </article>
+          );
+        })}
       </section>
 
       {picker ? (
@@ -715,7 +888,7 @@ export function App() {
             <p>
               Строка «{habitToDelete.name}»
               {state.habits.some((habit) => habit.parentId === habitToDelete.id)
-                ? " вместе с поднавыками"
+                ? " вместе с упражнениями"
                 : ""}{" "}
               и все её оценки исчезнут из таблицы. Это действие нельзя будет
               отменить.
@@ -745,7 +918,7 @@ export function App() {
           <button
             className="dialog-scrim"
             type="button"
-            aria-label="Закрыть добавление поднавыка"
+            aria-label="Закрыть добавление упражнения"
             onClick={() => setParentForNewSkill(null)}
           />
           <form
@@ -755,7 +928,7 @@ export function App() {
             aria-labelledby="new-subskill-title"
             onSubmit={addSubSkill}
           >
-            <h2 id="new-subskill-title">Добавить поднавык</h2>
+            <h2 id="new-subskill-title">Добавить упражнение</h2>
             <p className="dialog-context">{parentForNewSkill.name}</p>
             <label>
               <span>Название</span>
