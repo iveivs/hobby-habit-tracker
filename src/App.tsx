@@ -13,8 +13,11 @@ import {
   loadCloudState,
   loadLocalState,
   makeEntryKey,
+  registerWithEmail,
+  resetEmailPassword,
   saveCloudState,
   saveLocalState,
+  signInWithEmail,
   signInWithGoogle,
   signOutOfGoogle,
   subscribeCloudState,
@@ -48,6 +51,7 @@ const appVersion = import.meta.env.VITE_APP_VERSION;
 const themeStorageKey = "hobby-habit-theme";
 
 type Theme = "light" | "dark";
+type AuthMode = "signin" | "signup";
 
 type HabitRow = Habit & {
   depth: number;
@@ -116,7 +120,7 @@ function formatSubskillCount(count: number) {
 }
 
 function getAuthErrorMessage(error: unknown) {
-  if (!(error instanceof FirebaseError)) return "Не удалось войти через Google";
+  if (!(error instanceof FirebaseError)) return "Не удалось выполнить вход";
 
   if (error.code === "auth/unauthorized-domain") {
     return "Firebase не разрешает вход с этого домена";
@@ -128,6 +132,30 @@ function getAuthErrorMessage(error: unknown) {
 
   if (error.code === "auth/popup-closed-by-user") {
     return "Окно входа закрылось до завершения";
+  }
+
+  if (error.code === "auth/email-already-in-use") {
+    return "Такой email уже зарегистрирован";
+  }
+
+  if (error.code === "auth/invalid-email") {
+    return "Проверь email";
+  }
+
+  if (error.code === "auth/weak-password") {
+    return "Пароль должен быть не короче 6 символов";
+  }
+
+  if (
+    error.code === "auth/invalid-credential" ||
+    error.code === "auth/user-not-found" ||
+    error.code === "auth/wrong-password"
+  ) {
+    return "Неверный email или пароль";
+  }
+
+  if (error.code === "auth/too-many-requests") {
+    return "Слишком много попыток, попробуй позже";
   }
 
   return `Ошибка входа: ${error.code}`;
@@ -190,8 +218,13 @@ export function App() {
   const [userName, setUserName] = useState<string | null>(null);
   const [userPhoto, setUserPhoto] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState(
-    hasFirebaseConfig ? "Можно войти через Google" : "Локальное хранение",
+    hasFirebaseConfig ? "Вход или регистрация" : "Локальное хранение",
   );
+  const [authMode, setAuthMode] = useState<AuthMode | null>(null);
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authMessage, setAuthMessage] = useState("");
+  const [authBusy, setAuthBusy] = useState(false);
   const [picker, setPicker] = useState<PickerState | null>(null);
   const [habitToDelete, setHabitToDelete] = useState<Habit | null>(null);
   const [habitToEdit, setHabitToEdit] = useState<Habit | null>(null);
@@ -228,7 +261,7 @@ export function App() {
       setUserPhoto(user?.photoURL ?? null);
 
       if (!user) {
-        setSyncStatus("Можно войти через Google");
+        setSyncStatus("Вход или регистрация");
         return;
       }
 
@@ -241,6 +274,9 @@ export function App() {
         await saveCloudState(user.uid, loadLocalState());
       }
       setSyncStatus("Синхронизация включена");
+      setAuthMode(null);
+      setAuthPassword("");
+      setAuthMessage("");
     });
   }, []);
 
@@ -295,18 +331,21 @@ export function App() {
   }, [habitToDelete]);
 
   useEffect(() => {
-    if (!habitToEdit && !expandedHabit && !parentForNewSkill) return;
+    if (!habitToEdit && !expandedHabit && !parentForNewSkill && !authMode) {
+      return;
+    }
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key !== "Escape") return;
       setHabitToEdit(null);
       setExpandedHabit(null);
       setParentForNewSkill(null);
+      setAuthMode(null);
     }
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [habitToEdit, expandedHabit, parentForNewSkill]);
+  }, [habitToEdit, expandedHabit, parentForNewSkill, authMode]);
 
   function commit(nextState: TrackerState) {
     const updatedState = { ...nextState, updatedAt: new Date().toISOString() };
@@ -464,9 +503,75 @@ export function App() {
         return;
       }
 
-      await signInWithGoogle();
+      setAuthMode("signin");
+      setAuthMessage("");
     } catch (error) {
       setSyncStatus(getAuthErrorMessage(error));
+    }
+  }
+
+  async function handleGoogleAuth() {
+    setAuthBusy(true);
+    setAuthMessage("");
+    try {
+      await signInWithGoogle();
+    } catch (error) {
+      setAuthMessage(getAuthErrorMessage(error));
+      setSyncStatus(getAuthErrorMessage(error));
+    } finally {
+      setAuthBusy(false);
+    }
+  }
+
+  async function handleEmailAuth(event: FormEvent) {
+    event.preventDefault();
+    const email = authEmail.trim();
+    const password = authPassword.trim();
+
+    if (!email) {
+      setAuthMessage("Укажи email");
+      return;
+    }
+
+    if (password.length < 6) {
+      setAuthMessage("Пароль должен быть не короче 6 символов");
+      return;
+    }
+
+    setAuthBusy(true);
+    setAuthMessage("");
+
+    try {
+      if (authMode === "signup") {
+        await registerWithEmail(email, password);
+      } else {
+        await signInWithEmail(email, password);
+      }
+    } catch (error) {
+      setAuthMessage(getAuthErrorMessage(error));
+      setSyncStatus(getAuthErrorMessage(error));
+    } finally {
+      setAuthBusy(false);
+    }
+  }
+
+  async function handlePasswordReset() {
+    const email = authEmail.trim();
+    if (!email) {
+      setAuthMessage("Сначала укажи email");
+      return;
+    }
+
+    setAuthBusy(true);
+    setAuthMessage("");
+
+    try {
+      await resetEmailPassword(email);
+      setAuthMessage("Письмо для сброса пароля отправлено");
+    } catch (error) {
+      setAuthMessage(getAuthErrorMessage(error));
+    } finally {
+      setAuthBusy(false);
     }
   }
 
@@ -492,7 +597,7 @@ export function App() {
         <div>
           <p className="eyebrow">Личный трекер</p>
           <div className="title-row">
-            <img className="brand-mark" src="./brand-mark.svg?v=1.5.1" alt="" />
+            <img className="brand-mark" src="./brand-mark.svg?v=1.6.0" alt="" />
             <h1>Hab-Hob</h1>
             <span className="version-badge">v{appVersion}</span>
           </div>
@@ -529,7 +634,7 @@ export function App() {
                 {userId
                   ? "Данные общие для всех устройств"
                   : hasFirebaseConfig
-                    ? "После входа появится облачная синхронизация"
+                    ? "Email, пароль или Google для синхронизации"
                     : "Данные пока сохраняются в этом браузере"}
               </span>
             </div>
@@ -539,7 +644,7 @@ export function App() {
                 type="button"
                 onClick={handleAuthClick}
               >
-                {userId ? "Выйти" : "Войти"}
+                {userId ? "Выйти" : "Вход"}
               </button>
             ) : null}
           </div>
@@ -1033,13 +1138,119 @@ export function App() {
         </div>
       ) : null}
 
+      {authMode ? (
+        <div className="dialog-backdrop">
+          <button
+            className="dialog-scrim"
+            type="button"
+            aria-label="Закрыть вход"
+            onClick={() => setAuthMode(null)}
+          />
+          <form
+            className="confirm-dialog auth-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="auth-title"
+            onSubmit={handleEmailAuth}
+          >
+            <h2 id="auth-title">Синхронизация</h2>
+            <p>
+              Email и пароль удобнее для телефона и встроенных браузеров. Google
+              можно оставить как быстрый вход на компьютере.
+            </p>
+            <div className="auth-tabs" role="tablist" aria-label="Режим входа">
+              <button
+                className={authMode === "signin" ? "active" : ""}
+                type="button"
+                role="tab"
+                aria-selected={authMode === "signin"}
+                onClick={() => {
+                  setAuthMode("signin");
+                  setAuthMessage("");
+                }}
+              >
+                Вход
+              </button>
+              <button
+                className={authMode === "signup" ? "active" : ""}
+                type="button"
+                role="tab"
+                aria-selected={authMode === "signup"}
+                onClick={() => {
+                  setAuthMode("signup");
+                  setAuthMessage("");
+                }}
+              >
+                Регистрация
+              </button>
+            </div>
+            <label>
+              <span>Email</span>
+              <input
+                autoComplete="email"
+                inputMode="email"
+                placeholder="name@example.com"
+                type="email"
+                value={authEmail}
+                onChange={(event) => setAuthEmail(event.target.value)}
+              />
+            </label>
+            <label>
+              <span>Пароль</span>
+              <input
+                autoComplete={
+                  authMode === "signup" ? "new-password" : "current-password"
+                }
+                minLength={6}
+                placeholder="Минимум 6 символов"
+                type="password"
+                value={authPassword}
+                onChange={(event) => setAuthPassword(event.target.value)}
+              />
+            </label>
+            {authMessage ? (
+              <p className="auth-message" role="status">
+                {authMessage}
+              </p>
+            ) : null}
+            <div className="dialog-actions">
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => setAuthMode(null)}
+              >
+                Отмена
+              </button>
+              <button className="primary-button" type="submit" disabled={authBusy}>
+                {authBusy
+                  ? "Подожди..."
+                  : authMode === "signup"
+                    ? "Создать аккаунт"
+                    : "Войти"}
+              </button>
+            </div>
+            <div className="auth-extra-actions">
+              {authMode === "signin" ? (
+                <button type="button" onClick={handlePasswordReset}>
+                  Сбросить пароль
+                </button>
+              ) : null}
+              <button type="button" onClick={handleGoogleAuth}>
+                Войти через Google
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+
       <section className="notes-band">
         <div>
           <h2>Телефон и компьютер</h2>
           <p>
             После публикации на GitHub Pages приложение откроется с любого
-            устройства. Без Firebase данные останутся локальными; с Firebase и
-            входом через Google новые хобби и оценки будут появляться везде.
+            устройства. Без входа данные останутся локальными; с Firebase и
+            входом через email или Google новые хобби и оценки будут появляться
+            везде.
           </p>
         </div>
         <div className="legend" aria-label="Цвета оценок">

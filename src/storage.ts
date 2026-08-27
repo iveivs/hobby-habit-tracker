@@ -1,11 +1,14 @@
 import { initializeApp, type FirebaseApp } from "firebase/app";
 import {
+  createUserWithEmailAndPassword,
   getAuth,
   GoogleAuthProvider,
   getRedirectResult,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   signInWithPopup,
   signInWithRedirect,
+  signInWithEmailAndPassword,
   signOut,
   type Auth,
   type User,
@@ -186,6 +189,24 @@ export async function signInWithGoogle() {
 
     throw error;
   }
+}
+
+export async function signInWithEmail(email: string, password: string) {
+  const firebase = ensureFirebase();
+  if (!firebase) return;
+  await signInWithEmailAndPassword(firebase.auth, email, password);
+}
+
+export async function registerWithEmail(email: string, password: string) {
+  const firebase = ensureFirebase();
+  if (!firebase) return;
+  await createUserWithEmailAndPassword(firebase.auth, email, password);
+}
+
+export async function resetEmailPassword(email: string) {
+  const firebase = ensureFirebase();
+  if (!firebase) return;
+  await sendPasswordResetEmail(firebase.auth, email);
 }
 
 export async function signOutOfGoogle() {
