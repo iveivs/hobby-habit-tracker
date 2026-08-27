@@ -45,6 +45,9 @@ const popoverWidth = 180;
 const popoverHeight = 254;
 const longHabitNameLimit = 38;
 const appVersion = import.meta.env.VITE_APP_VERSION;
+const themeStorageKey = "hobby-habit-theme";
+
+type Theme = "light" | "dark";
 
 type HabitRow = Habit & {
   depth: number;
@@ -58,6 +61,14 @@ type PickerState = {
   top: number;
   left: number;
 };
+
+function loadTheme(): Theme {
+  const savedTheme = localStorage.getItem(themeStorageKey);
+  if (savedTheme === "light" || savedTheme === "dark") return savedTheme;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
+}
 
 function dateKey(date: Date) {
   return date.toISOString().slice(0, 10);
@@ -162,6 +173,7 @@ function getVisibleHabitRows(habits: Habit[]): HabitRow[] {
 
 export function App() {
   const [state, setState] = useState<TrackerState>(() => loadLocalState());
+  const [theme, setTheme] = useState<Theme>(() => loadTheme());
   const [newHabit, setNewHabit] = useState("");
   const [newArea, setNewArea] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
@@ -182,6 +194,11 @@ export function App() {
   const dates = useMemo(() => getVisibleDates(), []);
   const visibleHabits = getVisibleHabitRows(state.habits);
   const stats = getStats(state);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem(themeStorageKey, theme);
+  }, [theme]);
 
   useEffect(() => {
     if (!hasFirebaseConfig) return;
@@ -438,6 +455,10 @@ export function App() {
     }
   }
 
+  function toggleTheme() {
+    setTheme((currentTheme) => (currentTheme === "light" ? "dark" : "light"));
+  }
+
   return (
     <main className="app-shell">
       <section className="topbar" aria-label="Обзор трекера">
@@ -448,36 +469,49 @@ export function App() {
             <span className="version-badge">v{appVersion}</span>
           </div>
         </div>
-        <div className="sync-card">
-          {userPhoto ? (
-            <img
-              className="user-avatar"
-              src={userPhoto}
-              alt=""
-              referrerPolicy="no-referrer"
-            />
-          ) : (
-            <span className={`status-dot ${userId ? "online" : ""}`} />
-          )}
-          <div>
-            <strong>{userName ?? syncStatus}</strong>
-            <span>
-              {userId
-                ? "Данные общие для всех устройств"
-                : hasFirebaseConfig
-                  ? "После входа появится облачная синхронизация"
-                  : "Данные пока сохраняются в этом браузере"}
-            </span>
+        <div className="topbar-actions">
+          <button
+            className="theme-toggle"
+            type="button"
+            aria-label={
+              theme === "light" ? "Включить тёмную тему" : "Включить светлую тему"
+            }
+            onClick={toggleTheme}
+          >
+            <span className={theme === "light" ? "active" : ""}>Светлая</span>
+            <span className={theme === "dark" ? "active" : ""}>Тёмная</span>
+          </button>
+          <div className="sync-card">
+            {userPhoto ? (
+              <img
+                className="user-avatar"
+                src={userPhoto}
+                alt=""
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <span className={`status-dot ${userId ? "online" : ""}`} />
+            )}
+            <div>
+              <strong>{userName ?? syncStatus}</strong>
+              <span>
+                {userId
+                  ? "Данные общие для всех устройств"
+                  : hasFirebaseConfig
+                    ? "После входа появится облачная синхронизация"
+                    : "Данные пока сохраняются в этом браузере"}
+              </span>
+            </div>
+            {hasFirebaseConfig ? (
+              <button
+                className="ghost-button"
+                type="button"
+                onClick={handleAuthClick}
+              >
+                {userId ? "Выйти" : "Войти"}
+              </button>
+            ) : null}
           </div>
-          {hasFirebaseConfig ? (
-            <button
-              className="ghost-button"
-              type="button"
-              onClick={handleAuthClick}
-            >
-              {userId ? "Выйти" : "Войти"}
-            </button>
-          ) : null}
         </div>
       </section>
 
