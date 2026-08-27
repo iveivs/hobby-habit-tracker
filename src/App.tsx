@@ -104,6 +104,24 @@ function formatSubskillCount(count: number) {
   return `${count} поднавыков`;
 }
 
+function getAuthErrorMessage(error: unknown) {
+  if (!(error instanceof FirebaseError)) return "Не удалось войти через Google";
+
+  if (error.code === "auth/unauthorized-domain") {
+    return "Firebase не разрешает вход с этого домена";
+  }
+
+  if (error.code === "auth/popup-blocked") {
+    return "Браузер заблокировал окно входа";
+  }
+
+  if (error.code === "auth/popup-closed-by-user") {
+    return "Окно входа закрылось до завершения";
+  }
+
+  return `Ошибка входа: ${error.code}`;
+}
+
 function getVisibleHabitRows(habits: Habit[]): HabitRow[] {
   const activeHabits = habits.filter((habit) => !habit.archived);
   const childCountByParent = new Map<string, number>();
@@ -169,11 +187,7 @@ export function App() {
     if (!hasFirebaseConfig) return;
 
     void completeRedirectSignIn().catch((error) => {
-      setSyncStatus(
-        error instanceof FirebaseError
-          ? `Ошибка входа: ${error.code}`
-          : "Не удалось завершить вход через Google",
-      );
+      setSyncStatus(getAuthErrorMessage(error));
     });
 
     return watchAuth(async (user) => {
@@ -420,11 +434,7 @@ export function App() {
 
       await signInWithGoogle();
     } catch (error) {
-      setSyncStatus(
-        error instanceof FirebaseError
-          ? `Ошибка входа: ${error.code}`
-          : "Не удалось войти через Google",
-      );
+      setSyncStatus(getAuthErrorMessage(error));
     }
   }
 
