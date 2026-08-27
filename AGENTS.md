@@ -11,12 +11,14 @@
 - Mobile should use the card/list layout, not the desktop table. Avoid page-level horizontal scrolling.
 - Projects can contain exercises. Exercises should be collapsible under their parent project.
 - Destructive actions need confirmation.
+- Per-habit charts live behind an action on the habit row/card. A larger analytics dashboard is a separate feature and should not crowd the main tracker.
 
 ## Auth And Data
 - Firebase Auth and Firestore are the current backend.
 - Google sign-in is optional; email/password must remain available for mobile and messenger in-app browsers.
 - Do not store, log, or display passwords. Password fields stay local to the form and are sent only to Firebase Auth.
 - Registration should require password confirmation and send Firebase email verification.
+- Signed-in users may set an optional nickname from a small profile dialog; the app must also allow changing or clearing it later.
 
 ## Validation Before Publishing
 - Run build and lint before publishing.

@@ -41,9 +41,14 @@ export type HabitEntry = {
   score: Score;
 };
 
+export type UserProfile = {
+  nickname?: string;
+};
+
 export type TrackerState = {
   habits: Habit[];
   entries: Record<string, HabitEntry>;
+  profile?: UserProfile;
   updatedAt: string;
 };
 

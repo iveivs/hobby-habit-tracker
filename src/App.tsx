@@ -48,11 +48,18 @@ const habitColors = ["#2f80ed", "#2f9e6d", "#d46b32", "#8f5bd3", "#c44569"];
 const popoverWidth = 180;
 const popoverHeight = 254;
 const longHabitNameLimit = 38;
-const appVersion = import.meta.env.VITE_APP_VERSION;
-const themeStorageKey = "hobby-habit-theme";
 
 type Theme = "light" | "dark";
 type AuthMode = "signin" | "signup";
+type ChartRange = "week" | "month" | "all";
+
+const chartRanges: Record<ChartRange, string> = {
+  week: "Неделя",
+  month: "Месяц",
+  all: "Всё время",
+};
+const appVersion = import.meta.env.VITE_APP_VERSION;
+const themeStorageKey = "hobby-habit-theme";
 
 type HabitRow = Habit & {
   depth: number;
@@ -99,6 +106,13 @@ function formatDay(date: Date) {
 
 function formatWeekday(date: Date) {
   return new Intl.DateTimeFormat("ru-RU", { weekday: "short" }).format(date);
+}
+
+function formatChartDate(date: string) {
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "2-digit",
+    month: "short",
+  }).format(new Date(`${date}T00:00:00`));
 }
 
 function getStats(state: TrackerState) {
@@ -207,6 +221,21 @@ function getVisibleHabitRows(
   });
 }
 
+function getChartPoints(state: TrackerState, habitId: string, range: ChartRange) {
+  const allEntries = Object.values(state.entries)
+    .filter((entry) => entry.habitId === habitId)
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  if (range === "all") return allEntries;
+
+  const days = range === "week" ? 7 : 30;
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days + 1);
+  const startKey = dateKey(startDate);
+
+  return allEntries.filter((entry) => entry.date >= startKey);
+}
+
 export function App() {
   const [state, setState] = useState<TrackerState>(() => loadLocalState());
   const [theme, setTheme] = useState<Theme>(() => loadTheme());
@@ -235,6 +264,10 @@ export function App() {
   const [editName, setEditName] = useState("");
   const [editArea, setEditArea] = useState("");
   const [newSkillName, setNewSkillName] = useState("");
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const [nicknameDraft, setNicknameDraft] = useState("");
+  const [chartHabit, setChartHabit] = useState<Habit | null>(null);
+  const [chartRange, setChartRange] = useState<ChartRange>("week");
 
   const dates = useMemo(() => getDateWindow(5, 4), []);
   const mobileDates = useMemo(() => getDateWindow(2, 3), []);
@@ -244,6 +277,20 @@ export function App() {
   const rootHabits = activeHabits.filter((habit) => !habit.parentId);
   const visibleHabits = getVisibleHabitRows(state.habits, expandedProjects);
   const stats = getStats(state);
+  const nickname = state.profile?.nickname?.trim() || null;
+  const displayName = nickname ?? userName ?? syncStatus;
+  const chartPoints = chartHabit
+    ? getChartPoints(state, chartHabit.id, chartRange)
+    : [];
+  const chartAverage = chartPoints.length
+    ? (
+        chartPoints.reduce((sum, entry) => sum + entry.score, 0) /
+        chartPoints.length
+      ).toFixed(1)
+    : "0.0";
+  const chartBestScore = chartPoints.length
+    ? Math.max(...chartPoints.map((entry) => entry.score))
+    : 0;
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -334,7 +381,14 @@ export function App() {
   }, [habitToDelete]);
 
   useEffect(() => {
-    if (!habitToEdit && !expandedHabit && !parentForNewSkill && !authMode) {
+    if (
+      !habitToEdit &&
+      !expandedHabit &&
+      !parentForNewSkill &&
+      !authMode &&
+      !profileDialogOpen &&
+      !chartHabit
+    ) {
       return;
     }
 
@@ -344,11 +398,20 @@ export function App() {
       setExpandedHabit(null);
       setParentForNewSkill(null);
       setAuthMode(null);
+      setProfileDialogOpen(false);
+      setChartHabit(null);
     }
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [habitToEdit, expandedHabit, parentForNewSkill, authMode]);
+  }, [
+    habitToEdit,
+    expandedHabit,
+    parentForNewSkill,
+    authMode,
+    profileDialogOpen,
+    chartHabit,
+  ]);
 
   function commit(nextState: TrackerState) {
     const updatedState = { ...nextState, updatedAt: new Date().toISOString() };
@@ -499,6 +562,27 @@ export function App() {
     setHabitToEdit(null);
   }
 
+  function startEditingProfile() {
+    setNicknameDraft(nickname ?? "");
+    setProfileDialogOpen(true);
+  }
+
+  function saveProfile(event: FormEvent) {
+    event.preventDefault();
+    const nextNickname = nicknameDraft.trim();
+
+    commit({
+      ...state,
+      profile: nextNickname ? { nickname: nextNickname } : {},
+    });
+    setProfileDialogOpen(false);
+  }
+
+  function openChart(habit: Habit) {
+    setChartHabit(habit);
+    setChartRange("week");
+  }
+
   async function handleAuthClick() {
     try {
       if (userId) {
@@ -610,7 +694,11 @@ export function App() {
         <div>
           <p className="eyebrow">Личный трекер</p>
           <div className="title-row">
-            <img className="brand-mark" src="./brand-mark.svg?v=1.6.1" alt="" />
+            <img
+              className="brand-mark"
+              src={`./brand-mark.svg?v=${appVersion}`}
+              alt=""
+            />
             <h1>Hab-Hob</h1>
             <span className="version-badge">v{appVersion}</span>
           </div>
@@ -642,23 +730,36 @@ export function App() {
               <span className={`status-dot ${userId ? "online" : ""}`} />
             )}
             <div>
-              <strong>{userName ?? syncStatus}</strong>
+              <strong>{displayName}</strong>
               <span>
                 {userId
-                  ? "Данные общие для всех устройств"
+                  ? nickname
+                    ? "Никнейм и данные общие для всех устройств"
+                    : "Данные общие для всех устройств"
                   : hasFirebaseConfig
                     ? "Email, пароль или Google для синхронизации"
                     : "Данные пока сохраняются в этом браузере"}
               </span>
             </div>
             {hasFirebaseConfig ? (
-              <button
-                className="ghost-button"
-                type="button"
-                onClick={handleAuthClick}
-              >
-                {userId ? "Выйти" : "Вход"}
-              </button>
+              <div className="sync-actions">
+                {userId ? (
+                  <button
+                    className="ghost-button"
+                    type="button"
+                    onClick={startEditingProfile}
+                  >
+                    Профиль
+                  </button>
+                ) : null}
+                <button
+                  className="ghost-button"
+                  type="button"
+                  onClick={handleAuthClick}
+                >
+                  {userId ? "Выйти" : "Вход"}
+                </button>
+              </div>
             ) : null}
           </div>
         </div>
@@ -761,6 +862,14 @@ export function App() {
                             ...
                           </button>
                         ) : null}
+                        <button
+                          className="chart-button"
+                          type="button"
+                          aria-label={`Открыть диаграмму ${habit.name}`}
+                          onClick={() => openChart(habit)}
+                        >
+                          ▥
+                        </button>
                         <button
                           className="edit-button"
                           type="button"
@@ -869,6 +978,13 @@ export function App() {
                 <button
                   className="secondary-button compact-button"
                   type="button"
+                  onClick={() => openChart(habit)}
+                >
+                  График
+                </button>
+                <button
+                  className="secondary-button compact-button"
+                  type="button"
                   onClick={() => startEditingHabit(habit)}
                 >
                   Изменить
@@ -905,6 +1021,14 @@ export function App() {
                           style={{ backgroundColor: rowHabit.color }}
                         />
                         <strong>{rowHabit.name}</strong>
+                        <button
+                          className="chart-button"
+                          type="button"
+                          aria-label={`Открыть диаграмму ${rowHabit.name}`}
+                          onClick={() => openChart(rowHabit)}
+                        >
+                          ▥
+                        </button>
                         <button
                           className="edit-button"
                           type="button"
@@ -1147,6 +1271,134 @@ export function App() {
                 Закрыть
               </button>
             </div>
+          </div>
+        </div>
+      ) : null}
+
+      {profileDialogOpen ? (
+        <div className="dialog-backdrop">
+          <button
+            className="dialog-scrim"
+            type="button"
+            aria-label="Закрыть профиль"
+            onClick={() => setProfileDialogOpen(false)}
+          />
+          <form
+            className="confirm-dialog edit-dialog profile-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="profile-title"
+            onSubmit={saveProfile}
+          >
+            <h2 id="profile-title">Профиль</h2>
+            <p className="dialog-context">{userName ?? "Аккаунт Firebase"}</p>
+            <label>
+              <span>Никнейм</span>
+              <input
+                maxLength={40}
+                placeholder="Как показывать тебя в приложении"
+                value={nicknameDraft}
+                onChange={(event) => setNicknameDraft(event.target.value)}
+              />
+            </label>
+            <p className="profile-hint">
+              Никнейм виден только внутри Hab-Hob. Если оставить поле пустым,
+              будет показан email или имя из аккаунта.
+            </p>
+            <div className="dialog-actions">
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => setProfileDialogOpen(false)}
+              >
+                Отмена
+              </button>
+              <button className="primary-button" type="submit">
+                Сохранить
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+
+      {chartHabit ? (
+        <div className="dialog-backdrop">
+          <button
+            className="dialog-scrim"
+            type="button"
+            aria-label="Закрыть диаграмму"
+            onClick={() => setChartHabit(null)}
+          />
+          <div
+            className="confirm-dialog chart-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="chart-title"
+          >
+            <div className="chart-head">
+              <div>
+                <p className="eyebrow">Диаграмма привычки</p>
+                <h2 id="chart-title">{chartHabit.name}</h2>
+              </div>
+              <button
+                className="archive-button"
+                type="button"
+                aria-label="Закрыть диаграмму"
+                onClick={() => setChartHabit(null)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="range-tabs" role="tablist" aria-label="Период">
+              {(Object.keys(chartRanges) as ChartRange[]).map((range) => (
+                <button
+                  className={chartRange === range ? "active" : ""}
+                  key={range}
+                  type="button"
+                  role="tab"
+                  aria-selected={chartRange === range}
+                  onClick={() => setChartRange(range)}
+                >
+                  {chartRanges[range]}
+                </button>
+              ))}
+            </div>
+            <div className="chart-stats" aria-label="Статистика диаграммы">
+              <span>
+                Отметок <strong>{chartPoints.length}</strong>
+              </span>
+              <span>
+                Средняя <strong>{chartAverage}</strong>
+              </span>
+              <span>
+                Лучшая <strong>{chartBestScore || "-"}</strong>
+              </span>
+            </div>
+            {chartPoints.length ? (
+              <div className="chart-scroll">
+                <div className="chart-bars">
+                  {chartPoints.map((entry) => (
+                    <div className="chart-bar-item" key={`${entry.date}-${entry.score}`}>
+                      <div className="chart-bar-track">
+                        <span
+                          className="chart-bar"
+                          style={{
+                            height: `${entry.score * 20}%`,
+                            backgroundColor: scoreColors[entry.score],
+                          }}
+                        />
+                      </div>
+                      <strong>{entry.score}</strong>
+                      <span>{formatChartDate(entry.date)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="chart-empty">
+                Пока нет оценок за выбранный период.
+              </div>
+            )}
           </div>
         </div>
       ) : null}
