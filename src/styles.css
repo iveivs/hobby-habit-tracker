@@ -95,8 +95,13 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 20px;
   margin-bottom: 20px;
+}
+
+.topbar > div:first-child {
+  min-width: 0;
 }
 
 .eyebrow {
@@ -143,7 +148,12 @@ h1 {
 .topbar-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 12px;
+  max-width: 100%;
+  min-width: 0;
+  margin-left: auto;
 }
 
 .theme-toggle {
@@ -183,7 +193,9 @@ h2 {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-width: min(100%, 420px);
+  width: min(420px, 100%);
+  min-width: 0;
+  max-width: 100%;
   padding: 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -195,6 +207,14 @@ h2 {
   display: grid;
   gap: 2px;
   flex: 1;
+  min-width: 0;
+}
+
+.sync-card strong,
+.sync-card span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sync-card span {
