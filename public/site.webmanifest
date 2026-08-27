@@ -4,7 +4,7 @@
   "description": "Личный трекер хобби и привычек с оценками выполнения.",
   "icons": [
     {
-      "src": "./favicon.svg",
+      "src": "./brand-mark.svg",
       "sizes": "64x64",
       "type": "image/svg+xml"
     },

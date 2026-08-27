@@ -492,7 +492,7 @@ export function App() {
         <div>
           <p className="eyebrow">Личный трекер</p>
           <div className="title-row">
-            <img className="brand-mark" src="./favicon.svg" alt="" />
+            <img className="brand-mark" src="./brand-mark.svg?v=1.5.1" alt="" />
             <h1>Hab-Hob</h1>
             <span className="version-badge">v{appVersion}</span>
           </div>
