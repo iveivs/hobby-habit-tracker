@@ -43,6 +43,7 @@ const habitColors = ["#2f80ed", "#2f9e6d", "#d46b32", "#8f5bd3", "#c44569"];
 const popoverWidth = 180;
 const popoverHeight = 254;
 const longHabitNameLimit = 38;
+const appVersion = import.meta.env.VITE_APP_VERSION;
 
 type PickerState = {
   key: string;
@@ -335,7 +336,10 @@ export function App() {
       <section className="topbar" aria-label="Обзор трекера">
         <div>
           <p className="eyebrow">Личный трекер</p>
-          <h1>Хобби и привычки</h1>
+          <div className="title-row">
+            <h1>Хобби и привычки</h1>
+            <span className="version-badge">v{appVersion}</span>
+          </div>
         </div>
         <div className="sync-card">
           {userPhoto ? (

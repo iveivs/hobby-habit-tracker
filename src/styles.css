@@ -65,6 +65,27 @@ h1 {
   line-height: 1;
 }
 
+.title-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.version-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  border: 1px solid #dce4dd;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #5d7367;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 5px 10px;
+}
+
 h2 {
   margin-bottom: 8px;
   font-size: 26px;
