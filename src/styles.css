@@ -1,6 +1,7 @@
 :root {
   color: #18201d;
   background: #f5f7f4;
+  font-size: 16px;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
@@ -31,17 +32,17 @@ button {
 }
 
 .app-shell {
-  width: min(1680px, calc(100% - 48px));
+  width: min(1880px, calc(100% - 40px));
   margin: 0 auto;
-  padding: 28px 0 40px;
+  padding: 32px 0 48px;
 }
 
 .topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 20px;
+  gap: 28px;
+  margin-bottom: 24px;
 }
 
 .eyebrow {
@@ -60,21 +61,21 @@ p {
 
 h1 {
   margin-bottom: 0;
-  font-size: clamp(32px, 5vw, 56px);
+  font-size: clamp(42px, 4.8vw, 72px);
   line-height: 1;
 }
 
 h2 {
   margin-bottom: 8px;
-  font-size: 22px;
+  font-size: 26px;
 }
 
 .sync-card {
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-width: min(100%, 420px);
-  padding: 12px;
+  gap: 14px;
+  min-width: min(100%, 440px);
+  padding: 14px 16px;
   border: 1px solid #dce4dd;
   border-radius: 8px;
   background: #ffffff;
@@ -89,7 +90,7 @@ h2 {
 
 .sync-card span {
   color: #637166;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .status-dot {
@@ -118,20 +119,22 @@ h2 {
   border: 0;
   background: transparent;
   color: #315f48;
+  font-size: 16px;
   font-weight: 700;
 }
 
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin-bottom: 20px;
+  gap: 16px;
+  margin-bottom: 24px;
 }
 
 .summary-grid article {
   display: grid;
-  gap: 8px;
-  padding: 18px;
+  gap: 10px;
+  min-height: 112px;
+  padding: 22px;
   border: 1px solid #dce4dd;
   border-radius: 8px;
   background: #ffffff;
@@ -139,11 +142,11 @@ h2 {
 
 .summary-grid span {
   color: #637166;
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .summary-grid strong {
-  font-size: 30px;
+  font-size: 38px;
 }
 
 .tracker-band,
@@ -163,19 +166,20 @@ h2 {
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding: 16px;
+  padding: 18px;
   border-bottom: 1px solid #e7ede8;
 }
 
 .habit-form {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   flex: 1;
 }
 
 .habit-form input {
   min-width: 0;
-  padding: 12px 14px;
+  min-height: 52px;
+  padding: 14px 16px;
   border: 1px solid #cbd7cf;
   border-radius: 8px;
   background: #fbfcfb;
@@ -194,8 +198,9 @@ h2 {
   border-radius: 8px;
   background: #264b3a;
   color: #ffffff;
+  min-height: 52px;
   font-weight: 800;
-  padding: 0 18px;
+  padding: 0 24px;
 }
 
 .table-wrap {
@@ -206,7 +211,7 @@ h2 {
 
 .tracker-table {
   width: 100%;
-  min-width: 1120px;
+  min-width: 1580px;
   border-collapse: collapse;
 }
 
@@ -219,10 +224,10 @@ h2 {
 }
 
 .tracker-table thead th {
-  padding: 12px 8px;
+  padding: 14px 10px;
   background: #f8faf8;
   color: #5b6f62;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   text-transform: lowercase;
 }
@@ -234,15 +239,21 @@ h2 {
 
 .tracker-table tbody th,
 .tracker-table tbody td {
-  height: 64px;
+  height: 78px;
+}
+
+.tracker-table thead th:not(.habit-heading):not(.actions-heading),
+.tracker-table tbody td:not(:last-child) {
+  width: 88px;
+  min-width: 88px;
 }
 
 .habit-heading,
 .habit-cell {
   left: 0;
   z-index: 2;
-  width: 230px;
-  min-width: 230px;
+  width: 300px;
+  min-width: 300px;
   background: #ffffff;
   position: sticky !important;
 }
@@ -250,8 +261,8 @@ h2 {
 .habit-cell {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
+  gap: 14px;
+  padding: 14px 18px;
   text-align: left !important;
 }
 
@@ -264,7 +275,7 @@ h2 {
 
 .habit-cell span:last-child {
   color: #748076;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
 }
 
@@ -278,9 +289,10 @@ h2 {
 
 .habit-title {
   display: -webkit-box;
-  max-height: 42px;
+  max-height: 46px;
   overflow: hidden;
-  line-height: 1.25;
+  font-size: 18px;
+  line-height: 1.28;
   overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -291,8 +303,8 @@ h2 {
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   border: 1px solid transparent;
   border-radius: 6px;
   background: transparent;
@@ -317,18 +329,19 @@ h2 {
 }
 
 .habit-mark {
-  width: 12px;
-  height: 38px;
+  width: 14px;
+  height: 46px;
   flex: 0 0 auto;
   border-radius: 999px;
 }
 
 .score-cell {
-  width: 40px;
-  height: 40px;
+  width: 50px;
+  height: 50px;
   border: 1px solid #d5ded7;
   border-radius: 8px;
   color: #17221c;
+  font-size: 18px;
   font-weight: 900;
   transition:
     transform 160ms ease,
@@ -382,13 +395,13 @@ h2 {
 
 .actions-heading,
 .tracker-table td:last-child {
-  width: 54px;
-  min-width: 54px;
+  width: 64px;
+  min-width: 64px;
 }
 
 .archive-button {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   color: #7d8a82;
 }
@@ -503,12 +516,12 @@ h2 {
   grid-template-columns: 1fr auto;
   gap: 24px;
   align-items: center;
-  margin-top: 20px;
-  padding: 20px;
+  margin-top: 24px;
+  padding: 24px;
 }
 
 .notes-band p {
-  max-width: 720px;
+  max-width: 900px;
   margin-bottom: 0;
   color: #5a675e;
   line-height: 1.6;
@@ -517,7 +530,7 @@ h2 {
 .legend {
   display: grid;
   gap: 8px;
-  min-width: 190px;
+  min-width: 210px;
 }
 
 .legend span {
@@ -525,14 +538,30 @@ h2 {
   align-items: center;
   gap: 8px;
   color: #4d5d53;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
 }
 
 .legend i {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   border-radius: 4px;
+}
+
+@media (min-width: 1800px) {
+  .app-shell {
+    width: min(1960px, calc(100% - 56px));
+  }
+
+  .tracker-table {
+    min-width: 1720px;
+  }
+
+  .tracker-table thead th:not(.habit-heading):not(.actions-heading),
+  .tracker-table tbody td:not(:last-child) {
+    width: 96px;
+    min-width: 96px;
+  }
 }
 
 @media (max-width: 840px) {
@@ -559,6 +588,27 @@ h2 {
 
   .habit-form {
     flex-direction: column;
+  }
+
+  .tracker-table {
+    min-width: 1120px;
+  }
+
+  .tracker-table thead th:not(.habit-heading):not(.actions-heading),
+  .tracker-table tbody td:not(:last-child) {
+    width: 68px;
+    min-width: 68px;
+  }
+
+  .habit-heading,
+  .habit-cell {
+    width: 220px;
+    min-width: 220px;
+  }
+
+  .score-cell {
+    width: 44px;
+    height: 44px;
   }
 
   .habit-form button {
