@@ -17,6 +17,7 @@ import {
   resetEmailPassword,
   saveCloudState,
   saveLocalState,
+  sendVerificationEmail,
   signInWithEmail,
   signInWithGoogle,
   signOutOfGoogle,
@@ -223,6 +224,7 @@ export function App() {
   const [authMode, setAuthMode] = useState<AuthMode | null>(null);
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
+  const [authPasswordRepeat, setAuthPasswordRepeat] = useState("");
   const [authMessage, setAuthMessage] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
   const [picker, setPicker] = useState<PickerState | null>(null);
@@ -234,7 +236,7 @@ export function App() {
   const [editArea, setEditArea] = useState("");
   const [newSkillName, setNewSkillName] = useState("");
 
-  const dates = useMemo(() => getDateWindow(7, 6), []);
+  const dates = useMemo(() => getDateWindow(5, 4), []);
   const mobileDates = useMemo(() => getDateWindow(2, 3), []);
   const todayKey = dateKey(new Date());
   const activeHabits = getActiveHabits(state.habits);
@@ -276,6 +278,7 @@ export function App() {
       setSyncStatus("Синхронизация включена");
       setAuthMode(null);
       setAuthPassword("");
+      setAuthPasswordRepeat("");
       setAuthMessage("");
     });
   }, []);
@@ -527,6 +530,7 @@ export function App() {
     event.preventDefault();
     const email = authEmail.trim();
     const password = authPassword.trim();
+    const passwordRepeat = authPasswordRepeat.trim();
 
     if (!email) {
       setAuthMessage("Укажи email");
@@ -538,12 +542,21 @@ export function App() {
       return;
     }
 
+    if (authMode === "signup" && password !== passwordRepeat) {
+      setAuthMessage("Пароли не совпадают");
+      return;
+    }
+
     setAuthBusy(true);
     setAuthMessage("");
 
     try {
       if (authMode === "signup") {
-        await registerWithEmail(email, password);
+        const credential = await registerWithEmail(email, password);
+        if (credential?.user) {
+          await sendVerificationEmail(credential.user);
+          setAuthMessage("Аккаунт создан. Письмо подтверждения отправлено");
+        }
       } else {
         await signInWithEmail(email, password);
       }
@@ -597,7 +610,7 @@ export function App() {
         <div>
           <p className="eyebrow">Личный трекер</p>
           <div className="title-row">
-            <img className="brand-mark" src="./brand-mark.svg?v=1.6.0" alt="" />
+            <img className="brand-mark" src="./brand-mark.svg?v=1.6.1" alt="" />
             <h1>Hab-Hob</h1>
             <span className="version-badge">v{appVersion}</span>
           </div>
@@ -1166,6 +1179,7 @@ export function App() {
                 aria-selected={authMode === "signin"}
                 onClick={() => {
                   setAuthMode("signin");
+                  setAuthPasswordRepeat("");
                   setAuthMessage("");
                 }}
               >
@@ -1208,6 +1222,21 @@ export function App() {
                 onChange={(event) => setAuthPassword(event.target.value)}
               />
             </label>
+            {authMode === "signup" ? (
+              <label>
+                <span>Повтор пароля</span>
+                <input
+                  autoComplete="new-password"
+                  minLength={6}
+                  placeholder="Повтори пароль"
+                  type="password"
+                  value={authPasswordRepeat}
+                  onChange={(event) =>
+                    setAuthPasswordRepeat(event.target.value)
+                  }
+                />
+              </label>
+            ) : null}
             {authMessage ? (
               <p className="auth-message" role="status">
                 {authMessage}
@@ -1235,7 +1264,7 @@ export function App() {
                   Сбросить пароль
                 </button>
               ) : null}
-              <button type="button" onClick={handleGoogleAuth}>
+              <button type="button" onClick={handleGoogleAuth} disabled={authBusy}>
                 Войти через Google
               </button>
             </div>

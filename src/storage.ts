@@ -5,12 +5,14 @@ import {
   GoogleAuthProvider,
   getRedirectResult,
   onAuthStateChanged,
+  sendEmailVerification,
   sendPasswordResetEmail,
   signInWithPopup,
   signInWithRedirect,
   signInWithEmailAndPassword,
   signOut,
   type Auth,
+  type UserCredential,
   type User,
 } from "firebase/auth";
 import {
@@ -197,10 +199,24 @@ export async function signInWithEmail(email: string, password: string) {
   await signInWithEmailAndPassword(firebase.auth, email, password);
 }
 
-export async function registerWithEmail(email: string, password: string) {
+export async function registerWithEmail(
+  email: string,
+  password: string,
+): Promise<UserCredential | undefined> {
   const firebase = ensureFirebase();
   if (!firebase) return;
-  await createUserWithEmailAndPassword(firebase.auth, email, password);
+  return createUserWithEmailAndPassword(firebase.auth, email, password);
+}
+
+export async function sendVerificationEmail(user: User) {
+  const firebase = ensureFirebase();
+  if (!firebase) return;
+
+  firebase.auth.languageCode = "ru";
+  await sendEmailVerification(user, {
+    url: window.location.href,
+    handleCodeInApp: false,
+  });
 }
 
 export async function resetEmailPassword(email: string) {
