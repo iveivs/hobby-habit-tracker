@@ -26,6 +26,7 @@ export type Habit = {
   name: string;
   area: string;
   color: string;
+  parentId?: string;
   archived?: boolean;
 };
 
@@ -86,8 +87,30 @@ export function makeEntryKey(habitId: string, date: string) {
 
 export function createDefaultState(): TrackerState {
   const today = new Date().toISOString().slice(0, 10);
+  const guitarId = crypto.randomUUID();
   const habits: Habit[] = [
-    { id: crypto.randomUUID(), name: "Гитара", area: "творчество", color: "#2f80ed" },
+    { id: guitarId, name: "Гитара", area: "творчество", color: "#2f80ed" },
+    {
+      id: crypto.randomUUID(),
+      name: "Игра с метрономом",
+      area: "поднавык",
+      color: "#2f80ed",
+      parentId: guitarId,
+    },
+    {
+      id: crypto.randomUUID(),
+      name: "Чтение с листа",
+      area: "поднавык",
+      color: "#2f80ed",
+      parentId: guitarId,
+    },
+    {
+      id: crypto.randomUUID(),
+      name: "Снятие партий на слух",
+      area: "поднавык",
+      color: "#2f80ed",
+      parentId: guitarId,
+    },
     { id: crypto.randomUUID(), name: "Английский", area: "обучение", color: "#8f5bd3" },
     { id: crypto.randomUUID(), name: "Спорт", area: "здоровье", color: "#2f9e6d" },
     { id: crypto.randomUUID(), name: "Чтение", area: "восстановление", color: "#d46b32" },

@@ -283,8 +283,23 @@ h2 {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 14px 18px;
+  padding: 14px 18px 14px calc(18px + var(--depth, 0) * 30px);
   text-align: left !important;
+}
+
+.subskill-row .habit-cell {
+  background: #fbfcfb;
+}
+
+.subskill-row .habit-mark {
+  width: 8px;
+  height: 34px;
+  opacity: 0.72;
+}
+
+.subskill-row .habit-title {
+  font-size: 16px;
+  font-weight: 800;
 }
 
 .habit-copy {
@@ -302,7 +317,7 @@ h2 {
 
 .habit-title-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
   align-items: start;
   gap: 5px;
   width: 100%;
@@ -320,7 +335,8 @@ h2 {
 }
 
 .edit-button,
-.more-name-button {
+.more-name-button,
+.add-subskill-button {
   display: grid;
   place-items: center;
   flex: 0 0 auto;
@@ -339,10 +355,17 @@ h2 {
   font-size: 14px;
 }
 
+.add-subskill-button {
+  color: #315f48;
+  font-size: 20px;
+}
+
 .edit-button:hover,
 .edit-button:focus-visible,
 .more-name-button:hover,
-.more-name-button:focus-visible {
+.more-name-button:focus-visible,
+.add-subskill-button:hover,
+.add-subskill-button:focus-visible {
   border-color: #d1ddd5;
   background: #eef3ef;
   color: #264b3a;
@@ -467,6 +490,13 @@ h2 {
   margin-bottom: 20px;
   color: #5a675e;
   line-height: 1.55;
+}
+
+.confirm-dialog .dialog-context {
+  margin-top: -4px;
+  margin-bottom: 4px;
+  color: #315f48;
+  font-weight: 800;
 }
 
 .dialog-actions {
@@ -625,6 +655,10 @@ h2 {
   .habit-cell {
     width: 220px;
     min-width: 220px;
+  }
+
+  .habit-cell {
+    padding-left: calc(14px + var(--depth, 0) * 22px);
   }
 
   .score-cell {

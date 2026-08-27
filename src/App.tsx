@@ -2,6 +2,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  type CSSProperties,
   type FormEvent,
   type MouseEvent,
 } from "react";
@@ -44,6 +45,11 @@ const popoverWidth = 180;
 const popoverHeight = 254;
 const longHabitNameLimit = 38;
 const appVersion = import.meta.env.VITE_APP_VERSION;
+
+type HabitRow = Habit & {
+  depth: number;
+  childCount: number;
+};
 
 type PickerState = {
   key: string;
@@ -90,6 +96,52 @@ function getStats(state: TrackerState) {
   return { habitCount: habits.length, total, average, best };
 }
 
+function formatSubskillCount(count: number) {
+  if (count % 10 === 1 && count % 100 !== 11) return `${count} поднавык`;
+  if ([2, 3, 4].includes(count % 10) && ![12, 13, 14].includes(count % 100)) {
+    return `${count} поднавыка`;
+  }
+  return `${count} поднавыков`;
+}
+
+function getVisibleHabitRows(habits: Habit[]): HabitRow[] {
+  const activeHabits = habits.filter((habit) => !habit.archived);
+  const childCountByParent = new Map<string, number>();
+
+  activeHabits.forEach((habit) => {
+    if (!habit.parentId) return;
+    childCountByParent.set(
+      habit.parentId,
+      (childCountByParent.get(habit.parentId) ?? 0) + 1,
+    );
+  });
+
+  const childrenByParent = new Map<string, Habit[]>();
+  activeHabits.forEach((habit) => {
+    if (!habit.parentId) return;
+    const siblings = childrenByParent.get(habit.parentId) ?? [];
+    siblings.push(habit);
+    childrenByParent.set(habit.parentId, siblings);
+  });
+
+  return activeHabits.flatMap((habit) => {
+    if (habit.parentId) return [];
+
+    const projectRow: HabitRow = {
+      ...habit,
+      depth: 0,
+      childCount: childCountByParent.get(habit.id) ?? 0,
+    };
+    const childRows = (childrenByParent.get(habit.id) ?? []).map((child) => ({
+      ...child,
+      depth: 1,
+      childCount: 0,
+    }));
+
+    return [projectRow, ...childRows];
+  });
+}
+
 export function App() {
   const [state, setState] = useState<TrackerState>(() => loadLocalState());
   const [newHabit, setNewHabit] = useState("");
@@ -103,12 +155,14 @@ export function App() {
   const [picker, setPicker] = useState<PickerState | null>(null);
   const [habitToDelete, setHabitToDelete] = useState<Habit | null>(null);
   const [habitToEdit, setHabitToEdit] = useState<Habit | null>(null);
+  const [parentForNewSkill, setParentForNewSkill] = useState<Habit | null>(null);
   const [expandedHabit, setExpandedHabit] = useState<Habit | null>(null);
   const [editName, setEditName] = useState("");
   const [editArea, setEditArea] = useState("");
+  const [newSkillName, setNewSkillName] = useState("");
 
   const dates = useMemo(() => getVisibleDates(), []);
-  const visibleHabits = state.habits.filter((habit) => !habit.archived);
+  const visibleHabits = getVisibleHabitRows(state.habits);
   const stats = getStats(state);
 
   useEffect(() => {
@@ -195,17 +249,18 @@ export function App() {
   }, [habitToDelete]);
 
   useEffect(() => {
-    if (!habitToEdit && !expandedHabit) return;
+    if (!habitToEdit && !expandedHabit && !parentForNewSkill) return;
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key !== "Escape") return;
       setHabitToEdit(null);
       setExpandedHabit(null);
+      setParentForNewSkill(null);
     }
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [habitToEdit, expandedHabit]);
+  }, [habitToEdit, expandedHabit, parentForNewSkill]);
 
   function commit(nextState: TrackerState) {
     const updatedState = { ...nextState, updatedAt: new Date().toISOString() };
@@ -276,18 +331,60 @@ export function App() {
   }
 
   function deleteHabit(habitId: string) {
+    const idsToDelete = new Set([
+      habitId,
+      ...state.habits
+        .filter((habit) => habit.parentId === habitId)
+        .map((habit) => habit.id),
+    ]);
     const entries = Object.fromEntries(
       Object.entries(state.entries).filter(
-        ([, entry]) => entry.habitId !== habitId,
+        ([, entry]) => !idsToDelete.has(entry.habitId),
       ),
     );
 
     commit({
       ...state,
-      habits: state.habits.filter((habit) => habit.id !== habitId),
+      habits: state.habits.filter((habit) => !idsToDelete.has(habit.id)),
       entries,
     });
     setHabitToDelete(null);
+  }
+
+  function startAddingSubSkill(parent: Habit) {
+    setNewSkillName("");
+    setParentForNewSkill(parent);
+  }
+
+  function addSubSkill(event: FormEvent) {
+    event.preventDefault();
+    if (!parentForNewSkill) return;
+
+    const name = newSkillName.trim();
+    if (!name) return;
+
+    const habit: Habit = {
+      id: crypto.randomUUID(),
+      name,
+      area: "поднавык",
+      color: parentForNewSkill.color,
+      parentId: parentForNewSkill.id,
+    };
+
+    const parentIndex = state.habits.findIndex(
+      (item) => item.id === parentForNewSkill.id,
+    );
+    let insertAt = parentIndex < 0 ? state.habits.length : parentIndex + 1;
+
+    while (state.habits[insertAt]?.parentId === parentForNewSkill.id) {
+      insertAt += 1;
+    }
+
+    const nextHabits = [...state.habits];
+    nextHabits.splice(insertAt, 0, habit);
+
+    commit({ ...state, habits: nextHabits });
+    setParentForNewSkill(null);
   }
 
   function startEditingHabit(habit: Habit) {
@@ -398,7 +495,7 @@ export function App() {
           <form className="habit-form" onSubmit={addHabit}>
             <input
               aria-label="Название привычки"
-              placeholder="Новая привычка или хобби"
+              placeholder="Новый проект или привычка"
               value={newHabit}
               onChange={(event) => setNewHabit(event.target.value)}
             />
@@ -416,7 +513,7 @@ export function App() {
           <table className="tracker-table">
             <thead>
               <tr>
-                <th className="habit-heading">Привычка</th>
+                <th className="habit-heading">Проект / навык</th>
                 {dates.map((date) => (
                   <th key={dateKey(date)}>
                     <span>{formatWeekday(date)}</span>
@@ -428,8 +525,14 @@ export function App() {
             </thead>
             <tbody>
               {visibleHabits.map((habit) => (
-                <tr key={habit.id}>
-                  <th className="habit-cell">
+                <tr
+                  key={habit.id}
+                  className={habit.depth ? "subskill-row" : "project-row"}
+                >
+                  <th
+                    className="habit-cell"
+                    style={{ "--depth": habit.depth } as CSSProperties}
+                  >
                     <span
                       className="habit-mark"
                       style={{ backgroundColor: habit.color }}
@@ -455,8 +558,26 @@ export function App() {
                         >
                           ✎
                         </button>
+                        {!habit.parentId ? (
+                          <button
+                            className="add-subskill-button"
+                            type="button"
+                            aria-label={`Добавить поднавык в ${habit.name}`}
+                            onClick={() => startAddingSubSkill(habit)}
+                          >
+                            +
+                          </button>
+                        ) : null}
                       </div>
-                      <span>{habit.area}</span>
+                      <span>
+                        {habit.parentId
+                          ? habit.area
+                          : habit.childCount
+                            ? `${habit.area} · ${formatSubskillCount(
+                                habit.childCount,
+                              )}`
+                            : habit.area}
+                      </span>
                     </div>
                   </th>
                   {dates.map((date) => {
@@ -548,8 +669,12 @@ export function App() {
           >
             <h2 id="delete-habit-title">Удалить привычку?</h2>
             <p>
-              Строка «{habitToDelete.name}» и все её оценки исчезнут из
-              таблицы. Это действие нельзя будет отменить.
+              Строка «{habitToDelete.name}»
+              {state.habits.some((habit) => habit.parentId === habitToDelete.id)
+                ? " вместе с поднавыками"
+                : ""}{" "}
+              и все её оценки исчезнут из таблицы. Это действие нельзя будет
+              отменить.
             </p>
             <div className="dialog-actions">
               <button
@@ -568,6 +693,48 @@ export function App() {
               </button>
             </div>
           </div>
+        </div>
+      ) : null}
+
+      {parentForNewSkill ? (
+        <div className="dialog-backdrop">
+          <button
+            className="dialog-scrim"
+            type="button"
+            aria-label="Закрыть добавление поднавыка"
+            onClick={() => setParentForNewSkill(null)}
+          />
+          <form
+            className="confirm-dialog edit-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="new-subskill-title"
+            onSubmit={addSubSkill}
+          >
+            <h2 id="new-subskill-title">Добавить поднавык</h2>
+            <p className="dialog-context">{parentForNewSkill.name}</p>
+            <label>
+              <span>Название</span>
+              <input
+                maxLength={120}
+                placeholder="Например, игра с метрономом"
+                value={newSkillName}
+                onChange={(event) => setNewSkillName(event.target.value)}
+              />
+            </label>
+            <div className="dialog-actions">
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => setParentForNewSkill(null)}
+              >
+                Отмена
+              </button>
+              <button className="primary-button" type="submit">
+                Добавить
+              </button>
+            </div>
+          </form>
         </div>
       ) : null}
 
