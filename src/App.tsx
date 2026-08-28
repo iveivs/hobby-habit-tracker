@@ -42,6 +42,7 @@ import {
   getChildrenByParent,
   getDateWindow,
   getExpandedProjectsFromState,
+  isFutureDay,
   getStats,
   getVisibleHabitRows,
   habitColors,
@@ -368,6 +369,11 @@ export function App() {
   }
 
   function setScore(habitId: string, date: string, score: Score | null) {
+    if (isFutureDay(date, todayKey)) {
+      setPicker(null);
+      return;
+    }
+
     const key = `${date}__${habitId}`;
     const entries = { ...state.entries };
 
@@ -784,6 +790,7 @@ export function App() {
         onOpenDayNote={openDayNoteFromPicker}
         onSetScore={setScore}
         picker={picker}
+        todayKey={todayKey}
       />
 
       <DayNoteEditor

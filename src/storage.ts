@@ -157,8 +157,21 @@ export function createDefaultState(): TrackerState {
 }
 
 function normalizeState(state: TrackerState): TrackerState {
+  const today = new Date().toISOString().slice(0, 10);
+
   return {
     ...state,
+    entries: Object.fromEntries(
+      Object.entries(state.entries ?? {}).flatMap(([key, entry]) => {
+        if (!entry || typeof entry !== "object") return [];
+        if (typeof entry.habitId !== "string" || typeof entry.date !== "string") {
+          return [];
+        }
+        if (![1, 2, 3, 4, 5].includes(entry.score)) return [];
+        if (entry.date > today) return [];
+        return [[key, entry]];
+      }),
+    ),
     dayNotes: Object.fromEntries(
       Object.entries(state.dayNotes ?? {}).flatMap(([date, note]) => {
         if (typeof note !== "string") return [];

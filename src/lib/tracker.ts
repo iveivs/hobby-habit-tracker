@@ -79,6 +79,10 @@ export function dateKey(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
+export function isFutureDay(day: string, todayKey = dateKey(new Date())) {
+  return day > todayKey;
+}
+
 export function getDateWindow(daysBefore: number, daysAfter: number) {
   const dates: Date[] = [];
   const today = new Date();

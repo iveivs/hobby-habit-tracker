@@ -5,6 +5,7 @@ import {
   dayNoteLimit,
   formatChartDate,
   formatLongDay,
+  isFutureDay,
   scoreColors,
   scoreLabels,
   type AuthMode,
@@ -42,6 +43,7 @@ type ScorePopoverProps = {
   onOpenDayNote: (date: string) => void;
   onSetScore: (habitId: string, date: string, score: Score | null) => void;
   picker: PickerState | null;
+  todayKey: string;
 };
 
 export function ScorePopover({
@@ -49,8 +51,11 @@ export function ScorePopover({
   onOpenDayNote,
   onSetScore,
   picker,
+  todayKey,
 }: ScorePopoverProps) {
   if (!picker) return null;
+
+  const futureDay = isFutureDay(picker.date, todayKey);
 
   return (
     <div
@@ -58,17 +63,19 @@ export function ScorePopover({
       role="menu"
       style={{ left: picker.left, top: picker.top }}
     >
-      {[1, 2, 3, 4, 5].map((score) => (
-        <button
-          key={score}
-          type="button"
-          style={{ backgroundColor: scoreColors[score as Score] }}
-          onClick={() => onSetScore(picker.habitId, picker.date, score as Score)}
-        >
-          <strong>{score}</strong>
-          <span>{scoreLabels[score as Score]}</span>
-        </button>
-      ))}
+      {!futureDay
+        ? ([1, 2, 3, 4, 5] as Score[]).map((score) => (
+            <button
+              key={score}
+              type="button"
+              style={{ backgroundColor: scoreColors[score] }}
+              onClick={() => onSetScore(picker.habitId, picker.date, score)}
+            >
+              <strong>{score}</strong>
+              <span>{scoreLabels[score]}</span>
+            </button>
+          ))
+        : null}
       <button
         className="note-popover-action"
         type="button"
@@ -76,13 +83,15 @@ export function ScorePopover({
       >
         {hasDayNote ? "Изменить заметку" : "Добавить заметку"}
       </button>
-      <button
-        className="clear-score"
-        type="button"
-        onClick={() => onSetScore(picker.habitId, picker.date, null)}
-      >
-        Очистить
-      </button>
+      {!futureDay ? (
+        <button
+          className="clear-score"
+          type="button"
+          onClick={() => onSetScore(picker.habitId, picker.date, null)}
+        >
+          Очистить
+        </button>
+      ) : null}
     </div>
   );
 }
