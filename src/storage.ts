@@ -274,7 +274,11 @@ export function subscribeCloudState(
   const firebase = ensureFirebase();
   if (!firebase) return () => undefined;
   return onSnapshot(doc(firebase.db, "users", userId, "tracker", "state"), (snapshot) => {
-    callback(snapshot.exists() ? (snapshot.data() as TrackerState) : null);
+    callback(
+      snapshot.exists()
+        ? normalizeState(snapshot.data() as TrackerState)
+        : null,
+    );
   });
 }
 
@@ -282,11 +286,13 @@ export async function loadCloudState(userId: string) {
   const firebase = ensureFirebase();
   if (!firebase) return null;
   const snapshot = await getDoc(doc(firebase.db, "users", userId, "tracker", "state"));
-  return snapshot.exists() ? (snapshot.data() as TrackerState) : null;
+  return snapshot.exists()
+    ? normalizeState(snapshot.data() as TrackerState)
+    : null;
 }
 
 export async function saveCloudState(userId: string, state: TrackerState) {
   const firebase = ensureFirebase();
   if (!firebase) return;
-  await setDoc(doc(firebase.db, "users", userId, "tracker", "state"), state);
+  await setDoc(doc(firebase.db, "users", userId, "tracker", "state"), normalizeState(state));
 }
