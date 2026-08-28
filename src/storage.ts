@@ -45,10 +45,15 @@ export type UserProfile = {
   nickname?: string;
 };
 
+export type UserPreferences = {
+  expandedProjectIds?: string[];
+};
+
 export type TrackerState = {
   habits: Habit[];
   entries: Record<string, HabitEntry>;
   profile?: UserProfile;
+  preferences?: UserPreferences;
   updatedAt: string;
 };
 
@@ -140,7 +145,22 @@ export function createDefaultState(): TrackerState {
         score: 5,
       },
     },
+    preferences: {
+      expandedProjectIds: [],
+    },
     updatedAt: new Date().toISOString(),
+  };
+}
+
+function normalizeState(state: TrackerState): TrackerState {
+  return {
+    ...state,
+    profile: state.profile ?? {},
+    preferences: {
+      expandedProjectIds: (state.preferences?.expandedProjectIds ?? []).filter(
+        (projectId): projectId is string => typeof projectId === "string",
+      ),
+    },
   };
 }
 
@@ -149,7 +169,7 @@ export function loadLocalState(): TrackerState {
   if (!raw) return createDefaultState();
 
   try {
-    return JSON.parse(raw) as TrackerState;
+    return normalizeState(JSON.parse(raw) as TrackerState);
   } catch {
     return createDefaultState();
   }

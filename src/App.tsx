@@ -241,11 +241,25 @@ function getChartPoints(state: TrackerState, habitId: string, range: ChartRange)
   return allEntries.filter((entry) => entry.date >= startKey);
 }
 
+function getExpandedProjectsFromState(state: TrackerState) {
+  const projectIdsWithChildren = new Set(
+    state.habits
+      .filter((habit) => !habit.archived && habit.parentId)
+      .map((habit) => habit.parentId!),
+  );
+
+  return new Set(
+    (state.preferences?.expandedProjectIds ?? []).filter((projectId) =>
+      projectIdsWithChildren.has(projectId),
+    ),
+  );
+}
+
 export function App() {
   const [state, setState] = useState<TrackerState>(() => loadLocalState());
   const [theme, setTheme] = useState<Theme>(() => loadTheme());
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(
-    () => new Set(),
+    () => getExpandedProjectsFromState(state),
   );
   const [newHabit, setNewHabit] = useState("");
   const [newArea, setNewArea] = useState("");
@@ -329,6 +343,7 @@ export function App() {
       const cloudState = await loadCloudState(user.uid);
       if (cloudState) {
         setState(cloudState);
+        setExpandedProjects(getExpandedProjectsFromState(cloudState));
         saveLocalState(cloudState);
       } else {
         await saveCloudState(user.uid, loadLocalState());
@@ -346,6 +361,7 @@ export function App() {
     return subscribeCloudState(userId, (cloudState) => {
       if (!cloudState) return;
       setState(cloudState);
+      setExpandedProjects(getExpandedProjectsFromState(cloudState));
       saveLocalState(cloudState);
     });
   }, [userId]);
@@ -504,11 +520,23 @@ export function App() {
         ([, entry]) => !idsToDelete.has(entry.habitId),
       ),
     );
+    const expandedProjectIds = (state.preferences?.expandedProjectIds ?? []).filter(
+      (projectId) => !idsToDelete.has(projectId),
+    );
 
+    setExpandedProjects((currentProjects) => {
+      const nextProjects = new Set(currentProjects);
+      idsToDelete.forEach((projectId) => nextProjects.delete(projectId));
+      return nextProjects;
+    });
     commit({
       ...state,
       habits: state.habits.filter((habit) => !idsToDelete.has(habit.id)),
       entries,
+      preferences: {
+        ...state.preferences,
+        expandedProjectIds,
+      },
     });
     setHabitToDelete(null);
   }
@@ -689,14 +717,20 @@ export function App() {
   }
 
   function toggleProject(projectId: string) {
-    setExpandedProjects((currentProjects) => {
-      const nextProjects = new Set(currentProjects);
-      if (nextProjects.has(projectId)) {
-        nextProjects.delete(projectId);
-      } else {
-        nextProjects.add(projectId);
-      }
-      return nextProjects;
+    const nextProjects = new Set(expandedProjects);
+    if (nextProjects.has(projectId)) {
+      nextProjects.delete(projectId);
+    } else {
+      nextProjects.add(projectId);
+    }
+
+    setExpandedProjects(nextProjects);
+    commit({
+      ...state,
+      preferences: {
+        ...state.preferences,
+        expandedProjectIds: [...nextProjects],
+      },
     });
   }
 
@@ -775,25 +809,6 @@ export function App() {
             ) : null}
           </div>
         </div>
-      </section>
-
-      <section className="summary-grid" aria-label="Статистика">
-        <article>
-          <span>Привычек</span>
-          <strong>{stats.habitCount}</strong>
-        </article>
-        <article>
-          <span>Отметок</span>
-          <strong>{stats.total}</strong>
-        </article>
-        <article>
-          <span>Средняя оценка</span>
-          <strong>{stats.average}</strong>
-        </article>
-        <article>
-          <span>Хороших дней</span>
-          <strong>{stats.best}</strong>
-        </article>
       </section>
 
       <section className="tracker-band">
@@ -1092,6 +1107,25 @@ export function App() {
             </article>
           );
         })}
+      </section>
+
+      <section className="summary-grid" aria-label="Статистика">
+        <article>
+          <span>Привычек</span>
+          <strong>{stats.habitCount}</strong>
+        </article>
+        <article>
+          <span>Отметок</span>
+          <strong>{stats.total}</strong>
+        </article>
+        <article>
+          <span>Средняя оценка</span>
+          <strong>{stats.average}</strong>
+        </article>
+        <article>
+          <span>Хороших дней</span>
+          <strong>{stats.best}</strong>
+        </article>
       </section>
 
       {picker ? (
