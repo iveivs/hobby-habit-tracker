@@ -41,6 +41,8 @@ export type HabitEntry = {
   score: Score;
 };
 
+export type DayNotes = Record<string, string>;
+
 export type UserProfile = {
   nickname?: string;
 };
@@ -52,6 +54,7 @@ export type UserPreferences = {
 export type TrackerState = {
   habits: Habit[];
   entries: Record<string, HabitEntry>;
+  dayNotes: DayNotes;
   profile?: UserProfile;
   preferences?: UserPreferences;
   updatedAt: string;
@@ -145,6 +148,7 @@ export function createDefaultState(): TrackerState {
         score: 5,
       },
     },
+    dayNotes: {},
     preferences: {
       expandedProjectIds: [],
     },
@@ -155,6 +159,13 @@ export function createDefaultState(): TrackerState {
 function normalizeState(state: TrackerState): TrackerState {
   return {
     ...state,
+    dayNotes: Object.fromEntries(
+      Object.entries(state.dayNotes ?? {}).flatMap(([date, note]) => {
+        if (typeof note !== "string") return [];
+        const normalized = note.trim().slice(0, 500);
+        return normalized ? [[date, normalized]] : [];
+      }),
+    ),
     profile: state.profile ?? {},
     preferences: {
       expandedProjectIds: (state.preferences?.expandedProjectIds ?? []).filter(
