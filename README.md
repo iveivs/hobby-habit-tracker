@@ -66,6 +66,30 @@ npm run deploy:pages
 4. Публиковать GitHub Pages командой `npm run deploy:pages`.
 5. Sites публиковать отдельно из актуального `main`.
 
+## Коммиты и версии
+
+Для истории проекта используем простой и читаемый формат коммитов:
+
+- `feat(scope): ...` — новая функция;
+- `fix(scope): ...` — исправление;
+- `chore(scope): ...` — внутренняя организационная правка;
+- `refactor(scope): ...` — перестройка кода без смены внешнего поведения.
+
+Примеры:
+
+- `feat(tracker): add day notes`
+- `fix(auth): add redirect fallback for mobile sign-in`
+- `fix(pages): publish latest stable build`
+- `chore(repo): standardize branching workflow`
+
+Версию продукта держим в `package.json` и обновляем по простому правилу:
+
+- `patch` — маленькие исправления и UX-улучшения;
+- `minor` — новые пользовательские возможности;
+- `major` — крупные несовместимые изменения.
+
+История заметных изменений хранится в [CHANGELOG.md](./CHANGELOG.md).
+
 ## Firebase
 
 Пока Firebase-настройки не заданы, приложение работает локально в текущем
