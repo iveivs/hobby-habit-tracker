@@ -1,5 +1,4 @@
 import { existsSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
@@ -8,7 +7,7 @@ import process from "node:process";
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, "..");
 const distDir = path.join(repoRoot, "dist");
-const worktreeDir = path.join(tmpdir(), "habhob-gh-pages");
+const worktreeDir = "/private/tmp/habhob-gh-pages";
 const packageJson = JSON.parse(
   execFileSync("node", ["-p", "JSON.stringify(require('./package.json'))"], {
     cwd: repoRoot,
@@ -47,7 +46,15 @@ if (!hasTargetWorktree) {
 
 run(
   "rsync",
-  ["-a", "--delete", "--exclude", ".git", `${distDir}/`, `${worktreeDir}/`],
+  [
+    "-a",
+    "--checksum",
+    "--delete",
+    "--exclude",
+    ".git",
+    `${distDir}/`,
+    `${worktreeDir}/`,
+  ],
   repoRoot,
 );
 
