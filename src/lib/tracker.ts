@@ -85,8 +85,7 @@ export type NoteEditorState =
 export type TrackerStats = {
   habitCount: number;
   total: number;
-  average: string;
-  best: number;
+  trackedDays: number;
 };
 
 export function loadTheme(): Theme {
@@ -236,12 +235,9 @@ export function getNotePreview(note: string, limit = 72) {
 export function getStats(state: TrackerState): TrackerStats {
   const habits = state.habits.filter((habit) => !habit.archived);
   const scores = Object.values(state.entries).map((entry) => entry.score);
+  const trackedDays = new Set(Object.keys(state.entries).map((key) => key.slice(0, 10))).size;
   const total = scores.length;
-  const average = total
-    ? (scores.reduce((sum, score) => sum + score, 0) / total).toFixed(1)
-    : "0.0";
-  const best = scores.filter((score) => score >= 4).length;
-  return { habitCount: habits.length, total, average, best };
+  return { habitCount: habits.length, total, trackedDays };
 }
 
 export function formatSubskillCount(count: number) {

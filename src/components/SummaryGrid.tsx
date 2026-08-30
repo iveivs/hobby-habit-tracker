@@ -16,12 +16,8 @@ export function SummaryGrid({ stats }: SummaryGridProps) {
         <strong>{stats.total}</strong>
       </article>
       <article>
-        <span>Средняя оценка</span>
-        <strong>{stats.average}</strong>
-      </article>
-      <article>
-        <span>Хороших дней</span>
-        <strong>{stats.best}</strong>
+        <span>Дней с отметками</span>
+        <strong>{stats.trackedDays}</strong>
       </article>
     </section>
   );

@@ -147,6 +147,13 @@ h1 {
   box-shadow: 0 12px 32px var(--shadow-card);
 }
 
+:root[data-theme="dark"] .brand-mark {
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  box-shadow:
+    0 12px 32px var(--shadow-card),
+    0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
 .version-badge {
   display: inline-flex;
   align-items: center;
