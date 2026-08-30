@@ -181,6 +181,9 @@ export function TrackerBand({
                         <span className="day-note-glyph" aria-hidden="true">
                           ✎
                         </span>
+                        {note ? (
+                          <span className="day-note-badge" aria-hidden="true" />
+                        ) : null}
                       </button>
                     </div>
                   </th>
