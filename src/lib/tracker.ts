@@ -26,6 +26,7 @@ export const dayNoteLimit = 500;
 export const themeStorageKey = "hobby-habit-theme";
 export const defaultCalendarPeriod = 10;
 export const mobileCalendarPeriod = 6;
+export const trailingFutureDays = 2;
 export const calendarPeriodOptions = [7, 10, 14, 30] as const;
 
 export type Theme = "light" | "dark";
@@ -111,8 +112,8 @@ export function isFutureDay(day: string, todayKey = dateKey(new Date())) {
 export function getDateWindow(anchor: string | Date, totalDays: number) {
   const dates: Date[] = [];
   const anchorDate = typeof anchor === "string" ? parseDateKey(anchor) : new Date(anchor);
-  const daysBefore = Math.floor((totalDays - 1) / 2);
-  const daysAfter = totalDays - daysBefore - 1;
+  const daysAfter = Math.min(trailingFutureDays, Math.max(totalDays - 1, 0));
+  const daysBefore = totalDays - daysAfter - 1;
 
   for (let offset = -daysBefore; offset <= daysAfter; offset += 1) {
     const date = new Date(anchorDate);
