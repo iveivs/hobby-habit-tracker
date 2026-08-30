@@ -332,6 +332,12 @@ h2 {
   font-size: 30px;
 }
 
+.summary-grid small {
+  color: var(--text-soft);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .tracker-band,
 .notes-band {
   border: 1px solid var(--border);
@@ -777,9 +783,9 @@ h2 {
   position: fixed;
   z-index: 21;
   display: grid;
-  gap: 12px;
-  width: min(320px, calc(100vw - 24px));
-  padding: 14px;
+  gap: 14px;
+  width: min(420px, calc(100vw - 24px));
+  padding: 18px;
   border: 1px solid var(--border-strong);
   border-radius: 8px;
   background: var(--surface);
@@ -811,12 +817,13 @@ h2 {
 
 .day-note-field textarea {
   width: 100%;
-  min-height: 120px;
+  min-height: 132px;
   resize: vertical;
   border: 1px solid var(--border-strong);
   border-radius: 8px;
   background: var(--surface-soft);
   color: var(--text);
+  font-size: 16px;
   line-height: 1.45;
   padding: 10px 12px;
 }
@@ -837,6 +844,11 @@ h2 {
   gap: 12px;
 }
 
+.day-note-editor-spacer {
+  width: 72px;
+  min-width: 72px;
+}
+
 .day-note-editor-buttons {
   display: flex;
   justify-content: flex-end;
@@ -844,9 +856,24 @@ h2 {
 }
 
 .note-delete-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid color-mix(in srgb, var(--danger) 44%, var(--border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--danger) 8%, var(--surface));
   color: var(--danger);
   font-weight: 800;
-  padding: 0;
+  text-align: center;
+}
+
+.note-delete-button:hover,
+.note-delete-button:focus-visible {
+  border-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+  outline: none;
 }
 
 .sr-only {
@@ -1204,10 +1231,55 @@ h2 {
   width: min(100%, 1480px);
 }
 
+.month-overview-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.month-overview-title-row h2 {
+  margin: 0;
+}
+
+.month-overview-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .month-overview-actions {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+.month-overview-view-tabs {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  width: min(220px, 100%);
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.month-overview-view-tabs button {
+  min-height: 36px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: 800;
+}
+
+.month-overview-view-tabs button.active {
+  background: var(--surface);
+  color: var(--primary-strong);
+  box-shadow: 0 6px 16px var(--shadow-card);
 }
 
 .month-overview-scroll {
@@ -1430,6 +1502,7 @@ h2 {
   }
 
   .dialog-scrim,
+  .month-overview-toolbar,
   .month-overview-actions,
   .archive-button {
     display: none !important;
@@ -1561,6 +1634,27 @@ h2 {
 @media (max-width: 840px) {
   .month-overview-dialog {
     width: min(100%, 1000px);
+  }
+
+  .month-overview-title-row {
+    gap: 10px;
+  }
+
+  .month-overview-toolbar {
+    align-items: stretch;
+  }
+
+  .month-overview-view-tabs,
+  .month-overview-actions {
+    width: 100%;
+  }
+
+  .month-overview-actions {
+    justify-content: stretch;
+  }
+
+  .month-overview-actions > * {
+    flex: 1 1 0;
   }
 
   .month-overview-scroll {
@@ -2044,12 +2138,16 @@ h2 {
   }
 
   .day-note-editor {
-    width: min(320px, calc(100vw - 20px));
+    width: min(420px, calc(100vw - 20px));
   }
 
   .day-note-editor-actions {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .day-note-editor-spacer {
+    display: none;
   }
 
   .day-note-editor-buttons {

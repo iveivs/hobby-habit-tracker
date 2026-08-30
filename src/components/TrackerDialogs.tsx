@@ -1,4 +1,4 @@
-import { type FormEvent, type ReactNode } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import {
   chartRanges,
   chartViews,
@@ -6,7 +6,6 @@ import {
   formatChartDate,
   formatLongDay,
   formatMonthTitle,
-  getNotePreview,
   isFutureDay,
   scoreColors,
   scoreLabels,
@@ -108,6 +107,7 @@ export function ScorePopover({
 }
 
 type DayNoteEditorProps = {
+  canDelete: boolean;
   draft: string;
   editor: NoteEditorState | null;
   onChangeDraft: (value: string) => void;
@@ -117,6 +117,7 @@ type DayNoteEditorProps = {
 };
 
 export function DayNoteEditor({
+  canDelete,
   draft,
   editor,
   onChangeDraft,
@@ -172,13 +173,17 @@ export function DayNoteEditor({
         </span>
       </div>
       <div className="day-note-editor-actions">
-        <button
-          className="ghost-button note-delete-button"
-          type="button"
-          onClick={onDelete}
-        >
-          Удалить
-        </button>
+        {canDelete ? (
+          <button
+            className="ghost-button note-delete-button"
+            type="button"
+            onClick={onDelete}
+          >
+            Удалить
+          </button>
+        ) : (
+          <span className="day-note-editor-spacer" aria-hidden="true" />
+        )}
         <div className="day-note-editor-buttons">
           <button className="secondary-button" type="button" onClick={onClose}>
             Отмена
@@ -437,7 +442,11 @@ type MonthOverviewDialogProps = {
   habits: Habit[];
   monthValue: string | null;
   onClose: () => void;
+  onNextMonth: () => void;
+  onPreviousMonth: () => void;
 };
+
+type MonthOverviewMode = "primary" | "all";
 
 type ChartDialogProps = {
   average: string;
@@ -619,10 +628,15 @@ export function MonthOverviewDialog({
   habits,
   monthValue,
   onClose,
+  onNextMonth,
+  onPreviousMonth,
 }: MonthOverviewDialogProps) {
+  const [mode, setMode] = useState<MonthOverviewMode>("primary");
   if (!monthValue) return null;
   const activeMonthValue = monthValue;
   const activeMonthTitle = formatMonthTitle(activeMonthValue);
+  const visibleHabits =
+    mode === "primary" ? habits.filter((habit) => !habit.parentId) : habits;
 
   const monthNotes = dates
     .map((date) => {
@@ -632,7 +646,7 @@ export function MonthOverviewDialog({
     })
     .filter(Boolean) as Array<{ date: string; note: string }>;
 
-  const monthEntryNotes = habits
+  const monthEntryNotes = visibleHabits
     .flatMap((habit) =>
       dates.map((date) => {
         const day = date.toISOString().slice(0, 10);
@@ -663,7 +677,7 @@ export function MonthOverviewDialog({
       })
       .join("");
 
-    const rows = habits
+    const rows = visibleHabits
       .map((habit) => {
         const scoreCells = dates
           .map((date) => {
@@ -922,7 +936,25 @@ export function MonthOverviewDialog({
         <div className="chart-head">
           <div>
             <p className="eyebrow">Месячный обзор</p>
-            <h2 id="month-overview-title">{formatMonthTitle(monthValue)}</h2>
+            <div className="month-overview-title-row">
+              <button
+                className="calendar-nav-button"
+                type="button"
+                aria-label="Предыдущий месяц"
+                onClick={onPreviousMonth}
+              >
+                ‹
+              </button>
+              <h2 id="month-overview-title">{formatMonthTitle(monthValue)}</h2>
+              <button
+                className="calendar-nav-button"
+                type="button"
+                aria-label="Следующий месяц"
+                onClick={onNextMonth}
+              >
+                ›
+              </button>
+            </div>
           </div>
           <button
             className="archive-button"
@@ -934,17 +966,40 @@ export function MonthOverviewDialog({
           </button>
         </div>
 
-        <div className="month-overview-actions">
-          <button
-            className="secondary-button"
-            type="button"
-            onClick={handlePrint}
-          >
-            Печать / PDF
-          </button>
-          <button className="primary-button" type="button" onClick={onClose}>
-            Готово
-          </button>
+        <div className="month-overview-toolbar">
+          <div className="month-overview-view-tabs" role="tablist" aria-label="Состав обзора">
+            <button
+              className={mode === "primary" ? "active" : ""}
+              type="button"
+              role="tab"
+              aria-selected={mode === "primary"}
+              onClick={() => setMode("primary")}
+            >
+              Основные
+            </button>
+            <button
+              className={mode === "all" ? "active" : ""}
+              type="button"
+              role="tab"
+              aria-selected={mode === "all"}
+              onClick={() => setMode("all")}
+            >
+              Все
+            </button>
+          </div>
+
+          <div className="month-overview-actions">
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={handlePrint}
+            >
+              Печать / PDF
+            </button>
+            <button className="primary-button" type="button" onClick={onClose}>
+              Готово
+            </button>
+          </div>
         </div>
 
         <div className="month-overview-scroll">
@@ -954,22 +1009,16 @@ export function MonthOverviewDialog({
                 <th>Проект / навык</th>
                 {dates.map((date) => {
                   const day = date.toISOString().slice(0, 10);
-                  const hasNote = Boolean(dayNotes[day]);
                   return (
                     <th key={day}>
                       <span>{date.getDate()}</span>
-                      {hasNote ? (
-                        <i className="month-note-marker" aria-label={`Есть заметка на ${formatLongDay(day)}`}>
-                          ✎
-                        </i>
-                      ) : null}
                     </th>
                   );
                 })}
               </tr>
             </thead>
             <tbody>
-              {habits.map((habit) => (
+              {visibleHabits.map((habit) => (
                 <tr key={habit.id}>
                   <th className={habit.parentId ? "month-habit-cell child" : "month-habit-cell"}>
                     <span
@@ -985,20 +1034,14 @@ export function MonthOverviewDialog({
                     const day = date.toISOString().slice(0, 10);
                     const entryKey = makeEntryKey(habit.id, day);
                     const entry = entries[entryKey];
-                    const entryNote = entryNotes[entryKey];
                     return (
                       <td key={`${habit.id}-${day}`}>
                         <span
-                          className={`month-score-cell ${entry ? "filled" : "empty"} ${entryNote ? "has-note" : ""}`}
+                          className={`month-score-cell ${entry ? "filled" : "empty"}`}
                           style={entry ? { backgroundColor: scoreColors[entry.score] } : undefined}
-                          title={
-                            entryNote
-                              ? `${habit.name} · ${formatLongDay(day)}\n${getNotePreview(entryNote, 90)}`
-                              : `${habit.name}, ${formatLongDay(day)}`
-                          }
+                          title={`${habit.name}, ${formatLongDay(day)}`}
                         >
                           {entry?.score ?? ""}
-                          {entryNote ? <span className="month-score-note-marker" aria-hidden="true" /> : null}
                         </span>
                       </td>
                     );
@@ -1009,39 +1052,6 @@ export function MonthOverviewDialog({
           </table>
         </div>
 
-        {monthNotes.length || monthEntryNotes.length ? (
-          <section className="month-notes-sheet" aria-label="Заметки месяца">
-            <h3>Заметки месяца</h3>
-            {monthNotes.length ? (
-              <div className="month-notes-group">
-                <h4>Заметки по дням</h4>
-                <div className="month-notes-list">
-                  {monthNotes.map(({ date, note }) => (
-                    <article key={date} className="month-note-item">
-                      <strong>{formatLongDay(date)}</strong>
-                      <p>{note}</p>
-                    </article>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-            {monthEntryNotes.length ? (
-              <div className="month-notes-group">
-                <h4>Заметки к ячейкам</h4>
-                <div className="month-notes-list">
-                  {monthEntryNotes.map(({ key, date, habitName, note }) => (
-                    <article key={key} className="month-note-item">
-                      <strong>
-                        {habitName} · {formatLongDay(date)}
-                      </strong>
-                      <p>{note}</p>
-                    </article>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-          </section>
-        ) : null}
       </div>
     </ModalShell>
   );

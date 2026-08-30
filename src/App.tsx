@@ -61,6 +61,7 @@ import {
   getChartPoints,
   getChildrenByParent,
   getDateWindow,
+  getEffectiveCalendarAnchorDate,
   getExpandedProjectsFromState,
   getMonthDates,
   getMonthInputValue,
@@ -76,15 +77,16 @@ import {
   popoverHeight,
   popoverWidth,
   shiftDate,
+  shiftMonth,
   themeStorageKey,
   type AuthMode,
   type CalendarPeriod,
   type ChartRange,
-    type ChartView,
-    type NoteEditorState,
-    type PickerState,
-    type Theme,
-  } from "./lib/tracker";
+  type ChartView,
+  type NoteEditorState,
+  type PickerState,
+  type Theme,
+} from "./lib/tracker";
 
 const appVersion = import.meta.env.VITE_APP_VERSION ?? "dev";
 
@@ -198,7 +200,10 @@ export function App() {
   const [dayNoteDraft, setDayNoteDraft] = useState("");
 
   const todayKey = dateKey(new Date());
-  const calendarAnchorDate = state.preferences?.calendarAnchorDate ?? todayKey;
+  const calendarAnchorDate = getEffectiveCalendarAnchorDate(
+    state.preferences?.calendarAnchorDate,
+    todayKey,
+  );
   const calendarPeriodDays =
     (state.preferences?.calendarPeriodDays as CalendarPeriod | undefined) ??
     defaultCalendarPeriod;
@@ -398,6 +403,15 @@ export function App() {
 
     return () => window.clearTimeout(timeoutId);
   }, [chartHabit, chartRequiredMonths, ensureCloudMonthsLoaded]);
+
+  useEffect(() => {
+    if (!monthOverviewValue) return;
+    const timeoutId = window.setTimeout(() => {
+      void ensureCloudMonthsLoaded([monthOverviewValue]);
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [ensureCloudMonthsLoaded, monthOverviewValue]);
 
   useEffect(() => {
     if (!picker) return;
@@ -1111,6 +1125,14 @@ export function App() {
       />
 
       <DayNoteEditor
+        canDelete={
+          dayNoteEditor?.type === "entry"
+            ? Boolean(
+                dayNoteEditor &&
+                  state.entryNotes[makeEntryKey(dayNoteEditor.habitId, dayNoteEditor.date)],
+              )
+            : Boolean(dayNoteEditor && state.dayNotes[dayNoteEditor.date])
+        }
         draft={dayNoteDraft}
         editor={dayNoteEditor}
         onChangeDraft={setDayNoteDraft}
@@ -1183,6 +1205,16 @@ export function App() {
         habits={monthOverviewHabits}
         monthValue={monthOverviewValue}
         onClose={() => setMonthOverviewValue(null)}
+        onNextMonth={() =>
+          setMonthOverviewValue((current) =>
+            current ? getMonthInputValue(shiftMonth(`${current}-15`, 1)) : current,
+          )
+        }
+        onPreviousMonth={() =>
+          setMonthOverviewValue((current) =>
+            current ? getMonthInputValue(shiftMonth(`${current}-15`, -1)) : current,
+          )
+        }
       />
 
       <AuthDialog

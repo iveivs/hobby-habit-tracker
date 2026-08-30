@@ -12,8 +12,9 @@ export function SummaryGrid({ stats }: SummaryGridProps) {
         <strong>{stats.habitCount}</strong>
       </article>
       <article>
-        <span>Отметок</span>
-        <strong>{stats.total}</strong>
+        <span>Текущая серия</span>
+        <strong>{stats.currentStreak}</strong>
+        <small>Лучшая серия: {stats.bestStreak}</small>
       </article>
       <article>
         <span>Дней с отметками</span>

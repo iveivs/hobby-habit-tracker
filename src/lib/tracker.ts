@@ -19,8 +19,8 @@ export const scoreColors: Record<Score, string> = {
 export const habitColors = ["#2f80ed", "#2f9e6d", "#d46b32", "#8f5bd3", "#c44569"];
 export const popoverWidth = 180;
 export const popoverHeight = 254;
-export const noteEditorWidth = 320;
-export const noteEditorHeight = 272;
+export const noteEditorWidth = 420;
+export const noteEditorHeight = 320;
 export const longHabitNameLimit = 38;
 export const dayNoteLimit = 500;
 export const themeStorageKey = "hobby-habit-theme";
@@ -87,6 +87,8 @@ export type TrackerStats = {
   habitCount: number;
   total: number;
   trackedDays: number;
+  currentStreak: number;
+  bestStreak: number;
 };
 
 export function loadTheme(): Theme {
@@ -127,6 +129,23 @@ export function shiftDate(day: string, deltaDays: number) {
   const nextDate = parseDateKey(day);
   nextDate.setDate(nextDate.getDate() + deltaDays);
   return dateKey(nextDate);
+}
+
+export function getDayDistance(fromDay: string, toDay: string) {
+  const fromDate = parseDateKey(fromDay);
+  const toDate = parseDateKey(toDay);
+  return Math.round((toDate.getTime() - fromDate.getTime()) / 86_400_000);
+}
+
+export function getEffectiveCalendarAnchorDate(savedAnchorDate: string | undefined, todayKey: string) {
+  if (!savedAnchorDate) return todayKey;
+
+  const daysBehindToday = getDayDistance(savedAnchorDate, todayKey);
+  if (daysBehindToday > 0 && daysBehindToday <= trailingFutureDays) {
+    return todayKey;
+  }
+
+  return savedAnchorDate;
 }
 
 export function shiftMonth(day: string, deltaMonths: number) {
@@ -236,9 +255,39 @@ export function getNotePreview(note: string, limit = 72) {
 export function getStats(state: TrackerState): TrackerStats {
   const habits = state.habits.filter((habit) => !habit.archived);
   const scores = Object.values(state.entries).map((entry) => entry.score);
-  const trackedDays = new Set(Object.keys(state.entries).map((key) => key.slice(0, 10))).size;
+  const todayKey = dateKey(new Date());
+  const trackedDayKeys = [...new Set(Object.keys(state.entries).map((key) => key.slice(0, 10)))]
+    .filter((day) => day <= todayKey)
+    .sort();
+  const trackedDays = trackedDayKeys.length;
   const total = scores.length;
-  return { habitCount: habits.length, total, trackedDays };
+
+  const trackedDaySet = new Set(trackedDayKeys);
+  let currentStreak = 0;
+  const cursor = parseDateKey(todayKey);
+
+  while (trackedDaySet.has(dateKey(cursor))) {
+    currentStreak += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  let bestStreak = 0;
+  let streak = 0;
+  let previousDay: string | null = null;
+
+  trackedDayKeys.forEach((day) => {
+    if (!previousDay) {
+      streak = 1;
+    } else {
+      const nextExpectedDay = shiftDate(previousDay, 1);
+      streak = nextExpectedDay === day ? streak + 1 : 1;
+    }
+
+    previousDay = day;
+    bestStreak = Math.max(bestStreak, streak);
+  });
+
+  return { habitCount: habits.length, total, trackedDays, currentStreak, bestStreak };
 }
 
 export function formatSubskillCount(count: number) {
