@@ -1,19 +1,26 @@
 import { type CSSProperties, type FormEvent, type MouseEvent } from "react";
 import { makeEntryKey, type Habit } from "../storage";
 import {
+  calendarPeriodLabels,
   dateKey,
   formatDay,
   formatLongDay,
+  getNotePreview,
   formatSubskillCount,
   formatWeekday,
   longHabitNameLimit,
   scoreColors,
+  type CalendarPeriod,
   type HabitRow,
 } from "../lib/tracker";
 
 type TrackerBandProps = {
   dates: Date[];
+  monthValue: string;
+  periodDays: CalendarPeriod;
+  rangeLabel: string;
   dayNotes: Record<string, string>;
+  entryNotes: Record<string, string>;
   entries: Record<string, { habitId: string; date: string; score: 1 | 2 | 3 | 4 | 5 }>;
   expandedProjects: Set<string>;
   newArea: string;
@@ -29,11 +36,18 @@ type TrackerBandProps = {
     event: MouseEvent<HTMLButtonElement>,
     date: string,
   ) => void;
+  onMonthChange: (value: string) => void;
+  onOpenMonthOverview: () => void;
+  onPeriodChange: (value: string) => void;
+  onPreviousPeriod: () => void;
+  onNextPeriod: () => void;
   onOpenFullHabitName: (habit: Habit) => void;
+  onToday: () => void;
   onTogglePicker: (
     event: MouseEvent<HTMLButtonElement>,
     key: string,
     habitId: string,
+    habitName: string,
     date: string,
   ) => void;
   onToggleProject: (projectId: string) => void;
@@ -43,7 +57,11 @@ type TrackerBandProps = {
 
 export function TrackerBand({
   dates,
+  monthValue,
+  periodDays,
+  rangeLabel,
   dayNotes,
+  entryNotes,
   entries,
   expandedProjects,
   newArea,
@@ -56,7 +74,13 @@ export function TrackerBand({
   onNewHabitChange,
   onOpenChart,
   onOpenDayNoteEditor,
+  onMonthChange,
+  onOpenMonthOverview,
+  onPeriodChange,
+  onPreviousPeriod,
+  onNextPeriod,
   onOpenFullHabitName,
+  onToday,
   onTogglePicker,
   onToggleProject,
   todayKey,
@@ -65,6 +89,51 @@ export function TrackerBand({
   return (
     <section className="tracker-band">
       <div className="toolbar">
+        <div className="calendar-toolbar" aria-label="Навигация по датам">
+          <div className="calendar-range-group">
+            <button type="button" className="calendar-nav-button" onClick={onPreviousPeriod}>
+              ‹
+            </button>
+            <div className="calendar-range-copy">
+              <strong>{rangeLabel}</strong>
+              <span>Окно календаря</span>
+            </div>
+            <button type="button" className="calendar-nav-button" onClick={onNextPeriod}>
+              ›
+            </button>
+            <button type="button" className="secondary-button calendar-today-button" onClick={onToday}>
+              Сегодня
+            </button>
+          </div>
+
+          <div className="calendar-filters">
+            <button
+              type="button"
+              className="secondary-button calendar-overview-button"
+              onClick={onOpenMonthOverview}
+            >
+              Весь месяц
+            </button>
+            <label className="calendar-field">
+              <span>Месяц</span>
+              <input type="month" value={monthValue} onChange={(event) => onMonthChange(event.target.value)} />
+            </label>
+            <label className="calendar-field">
+              <span>Период</span>
+              <select
+                value={periodDays}
+                onChange={(event) => onPeriodChange(event.target.value)}
+              >
+                {Object.entries(calendarPeriodLabels).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </div>
+
         <form className="habit-form" onSubmit={onAddHabit}>
           <input
             aria-label="Название привычки"
@@ -202,11 +271,12 @@ export function TrackerBand({
                   const day = dateKey(date);
                   const key = makeEntryKey(habit.id, day);
                   const entry = entries[key];
+                  const entryNote = entryNotes[key];
 
                   return (
                     <td key={key}>
                       <button
-                        className="score-cell"
+                        className={`score-cell ${entryNote ? "has-entry-note" : ""}`}
                         data-today={day === todayKey ? "true" : undefined}
                         style={{
                           backgroundColor: entry
@@ -215,11 +285,17 @@ export function TrackerBand({
                         }}
                         type="button"
                         aria-label={`${habit.name}, ${formatDay(date)}`}
+                        title={
+                          entryNote
+                            ? `${habit.name} · ${formatLongDay(day)}\n${getNotePreview(entryNote, 90)}`
+                            : `${habit.name}, ${formatLongDay(day)}`
+                        }
                         onClick={(event) =>
-                          onTogglePicker(event, key, habit.id, day)
+                          onTogglePicker(event, key, habit.id, habit.name, day)
                         }
                       >
                         {entry?.score ?? ""}
+                        {entryNote ? <span className="score-note-marker" aria-hidden="true" /> : null}
                       </button>
                     </td>
                   );

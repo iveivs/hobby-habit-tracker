@@ -1,10 +1,22 @@
-import { useEffect, useMemo, useState, type FormEvent, type MouseEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+  type MouseEvent,
+} from "react";
 import { FirebaseError } from "firebase/app";
 import {
   completeRedirectSignIn,
   hasFirebaseConfig,
+  makeEntryKey,
+  loadCloudMeta,
+  loadCloudMonths,
   loadCloudState,
   loadLocalState,
+  mergeMonthState,
+  migrateLegacyCloudState,
   registerWithEmail,
   resetEmailPassword,
   saveCloudState,
@@ -15,6 +27,9 @@ import {
   signOutOfGoogle,
   subscribeCloudState,
   watchAuth,
+  getCloudMetaFromState,
+  getStateMonthKeys,
+  type CloudTrackerMeta,
   type Habit,
   type Score,
   type TrackerState,
@@ -32,16 +47,25 @@ import {
   DeleteHabitDialog,
   EditHabitDialog,
   FullNameDialog,
+  MonthOverviewDialog,
   ProfileDialog,
   ScorePopover,
 } from "./components/TrackerDialogs";
 import {
+  applyMonthToAnchor,
+  defaultCalendarPeriod,
+  mobileCalendarPeriod,
   dateKey,
+  formatRangeLabel,
   getActiveHabits,
   getChartPoints,
   getChildrenByParent,
   getDateWindow,
   getExpandedProjectsFromState,
+  getMonthDates,
+  getMonthInputValue,
+  getMonthKeysBetween,
+  getMonthKeysForDates,
   isFutureDay,
   getStats,
   getVisibleHabitRows,
@@ -51,14 +75,16 @@ import {
   noteEditorWidth,
   popoverHeight,
   popoverWidth,
+  shiftDate,
   themeStorageKey,
   type AuthMode,
+  type CalendarPeriod,
   type ChartRange,
-  type ChartView,
-  type DayNoteEditorState,
-  type PickerState,
-  type Theme,
-} from "./lib/tracker";
+    type ChartView,
+    type NoteEditorState,
+    type PickerState,
+    type Theme,
+  } from "./lib/tracker";
 
 const appVersion = import.meta.env.VITE_APP_VERSION ?? "dev";
 
@@ -104,9 +130,39 @@ function getAuthErrorMessage(error: unknown) {
   return `Ошибка входа: ${error.code}`;
 }
 
+function getRequiredMonthKeys(anchorDate: string, periodDays: number) {
+  const visibleDates = getDateWindow(anchorDate, periodDays);
+  const monthKeys = new Set(getMonthKeysForDates(visibleDates));
+  monthKeys.add(getMonthInputValue(anchorDate));
+
+  const previousMonth = applyMonthToAnchor(anchorDate, getMonthInputValue(shiftDate(anchorDate, -31)));
+  const nextMonth = applyMonthToAnchor(anchorDate, getMonthInputValue(shiftDate(anchorDate, 31)));
+  monthKeys.add(getMonthInputValue(previousMonth));
+  monthKeys.add(getMonthInputValue(nextMonth));
+
+  return [...monthKeys].sort();
+}
+
+function getMonthKeysForChart(meta: CloudTrackerMeta | null, range: ChartRange, todayKey: string) {
+  if (range === "week") {
+    return getRequiredMonthKeys(todayKey, 7);
+  }
+
+  if (range === "month") {
+    return getRequiredMonthKeys(todayKey, 30);
+  }
+
+  if (!meta?.firstMonth || !meta?.lastMonth) return [];
+  return getMonthKeysBetween(meta.firstMonth, meta.lastMonth);
+}
+
 export function App() {
   const [state, setState] = useState<TrackerState>(() => loadLocalState());
   const [theme, setTheme] = useState<Theme>(() => loadTheme());
+  const [cloudMeta, setCloudMeta] = useState<CloudTrackerMeta | null>(null);
+  const [loadedMonthKeys, setLoadedMonthKeys] = useState<Set<string>>(() =>
+    new Set(getStateMonthKeys(loadLocalState())),
+  );
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(() =>
     getExpandedProjectsFromState(loadLocalState()),
   );
@@ -137,14 +193,33 @@ export function App() {
   const [chartHabit, setChartHabit] = useState<Habit | null>(null);
   const [chartRange, setChartRange] = useState<ChartRange>("week");
   const [chartView, setChartView] = useState<ChartView>("donut");
-  const [dayNoteEditor, setDayNoteEditor] = useState<DayNoteEditorState | null>(
-    null,
-  );
+  const [monthOverviewValue, setMonthOverviewValue] = useState<string | null>(null);
+  const [dayNoteEditor, setDayNoteEditor] = useState<NoteEditorState | null>(null);
   const [dayNoteDraft, setDayNoteDraft] = useState("");
 
-  const dates = useMemo(() => getDateWindow(5, 4), []);
-  const mobileDates = useMemo(() => getDateWindow(2, 3), []);
   const todayKey = dateKey(new Date());
+  const calendarAnchorDate = state.preferences?.calendarAnchorDate ?? todayKey;
+  const calendarPeriodDays =
+    (state.preferences?.calendarPeriodDays as CalendarPeriod | undefined) ??
+    defaultCalendarPeriod;
+  const dates = useMemo(
+    () => getDateWindow(calendarAnchorDate, calendarPeriodDays),
+    [calendarAnchorDate, calendarPeriodDays],
+  );
+  const mobileDates = useMemo(
+    () => getDateWindow(calendarAnchorDate, mobileCalendarPeriod),
+    [calendarAnchorDate],
+  );
+  const rangeLabel = useMemo(() => formatRangeLabel(dates), [dates]);
+  const monthValue = getMonthInputValue(calendarAnchorDate);
+  const monthOverviewDates = useMemo(
+    () => (monthOverviewValue ? getMonthDates(monthOverviewValue) : []),
+    [monthOverviewValue],
+  );
+  const requiredMonthKeys = useMemo(
+    () => getRequiredMonthKeys(calendarAnchorDate, calendarPeriodDays),
+    [calendarAnchorDate, calendarPeriodDays],
+  );
   const activeHabits = useMemo(() => getActiveHabits(state.habits), [state.habits]);
   const childrenByParent = useMemo(
     () => getChildrenByParent(state.habits),
@@ -158,12 +233,28 @@ export function App() {
     () => getVisibleHabitRows(state.habits, expandedProjects),
     [state.habits, expandedProjects],
   );
+  const monthOverviewHabits = useMemo(() => {
+    const activeRows = getVisibleHabitRows(
+      state.habits,
+      new Set(
+        state.habits
+          .filter((habit) => !habit.archived && habit.parentId)
+          .map((habit) => habit.parentId!),
+      ),
+    );
+
+    return activeRows;
+  }, [state.habits]);
   const stats = useMemo(() => getStats(state), [state]);
   const nickname = state.profile?.nickname?.trim() || null;
   const displayName = nickname ?? userName ?? syncStatus;
   const chartPoints = useMemo(
     () => (chartHabit ? getChartPoints(state, chartHabit.id, chartRange) : []),
     [chartHabit, chartRange, state],
+  );
+  const chartRequiredMonths = useMemo(
+    () => (chartHabit ? getMonthKeysForChart(cloudMeta, chartRange, todayKey) : []),
+    [chartHabit, chartRange, cloudMeta, todayKey],
   );
   const chartAverage = chartPoints.length
     ? (
@@ -184,6 +275,54 @@ export function App() {
   );
   const chartTotal = chartPoints.length;
 
+  const hydrateCloudState = useCallback(
+    async (nextUserId: string, nextMeta: CloudTrackerMeta) => {
+      const nextAnchorDate = nextMeta.preferences?.calendarAnchorDate ?? todayKey;
+      const nextPeriodDays =
+        (nextMeta.preferences?.calendarPeriodDays as CalendarPeriod | undefined) ??
+        defaultCalendarPeriod;
+      const monthKeys = getRequiredMonthKeys(nextAnchorDate, nextPeriodDays);
+      const nextState = await loadCloudState(nextUserId, monthKeys);
+
+      if (!nextState) return;
+
+      setCloudMeta(nextMeta);
+      setState(nextState);
+      setExpandedProjects(getExpandedProjectsFromState(nextState));
+      setLoadedMonthKeys(new Set(getStateMonthKeys(nextState)));
+      saveLocalState(nextState);
+    },
+    [todayKey],
+  );
+
+  const ensureCloudMonthsLoaded = useCallback(
+    async (monthKeys: string[], force = false) => {
+      if (!userId || !cloudMeta) return;
+
+      const uniqueMonthKeys = [...new Set(monthKeys)].sort();
+      const monthKeysToLoad = force
+        ? uniqueMonthKeys
+        : uniqueMonthKeys.filter((monthKey) => !loadedMonthKeys.has(monthKey));
+
+      if (!monthKeysToLoad.length) return;
+
+      const monthState = await loadCloudMonths(userId, monthKeysToLoad);
+
+      setState((currentState) => {
+        const mergedState = mergeMonthState(currentState, monthState, monthKeysToLoad);
+        saveLocalState(mergedState);
+        return mergedState;
+      });
+
+      setLoadedMonthKeys((currentMonths) => {
+        const nextMonths = new Set(currentMonths);
+        monthKeysToLoad.forEach((monthKey) => nextMonths.add(monthKey));
+        return nextMonths;
+      });
+    },
+    [cloudMeta, loadedMonthKeys, userId],
+  );
+
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     localStorage.setItem(themeStorageKey, theme);
@@ -202,36 +341,63 @@ export function App() {
       setUserPhoto(user?.photoURL ?? null);
 
       if (!user) {
+        setCloudMeta(null);
         setSyncStatus("Вход или регистрация");
         return;
       }
 
       setSyncStatus("Загружаю облачные данные");
-      const cloudState = await loadCloudState(user.uid);
-      if (cloudState) {
-        setState(cloudState);
-        setExpandedProjects(getExpandedProjectsFromState(cloudState));
-        saveLocalState(cloudState);
+      const nextMeta = await loadCloudMeta(user.uid);
+      if (nextMeta) {
+        await hydrateCloudState(user.uid, nextMeta);
+        await migrateLegacyCloudState(user.uid);
       } else {
-        await saveCloudState(user.uid, loadLocalState());
+        const localState = loadLocalState();
+        await saveCloudState(user.uid, localState, getStateMonthKeys(localState));
+        setCloudMeta(getCloudMetaFromState(localState));
       }
+
       setSyncStatus("Синхронизация включена");
       setAuthMode(null);
       setAuthPassword("");
       setAuthPasswordRepeat("");
       setAuthMessage("");
     });
-  }, []);
+  }, [hydrateCloudState]);
 
   useEffect(() => {
     if (!userId) return;
-    return subscribeCloudState(userId, (cloudState) => {
-      if (!cloudState) return;
-      setState(cloudState);
-      setExpandedProjects(getExpandedProjectsFromState(cloudState));
-      saveLocalState(cloudState);
+    return subscribeCloudState(userId, (nextMeta) => {
+      if (!nextMeta) return;
+      if (nextMeta.updatedAt === state.updatedAt) {
+        setCloudMeta(nextMeta);
+        return;
+      }
+
+      void (async () => {
+        setSyncStatus("Обновляю данные");
+        await hydrateCloudState(userId, nextMeta);
+        setSyncStatus("Синхронизация включена");
+      })();
     });
-  }, [userId]);
+  }, [hydrateCloudState, state.updatedAt, userId]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void ensureCloudMonthsLoaded(requiredMonthKeys);
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [ensureCloudMonthsLoaded, requiredMonthKeys]);
+
+  useEffect(() => {
+    if (!chartHabit) return;
+    const timeoutId = window.setTimeout(() => {
+      void ensureCloudMonthsLoaded(chartRequiredMonths);
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [chartHabit, chartRequiredMonths, ensureCloudMonthsLoaded]);
 
   useEffect(() => {
     if (!picker) return;
@@ -268,7 +434,11 @@ export function App() {
 
     function handlePointerDown(event: PointerEvent) {
       const target = event.target as Element | null;
-      if (target?.closest(".day-note-editor, .day-note-button, .mobile-note-card")) {
+      if (
+        target?.closest(
+          ".day-note-editor, .day-note-button, .mobile-note-card, .score-cell, .score-popover",
+        )
+      ) {
         return;
       }
       setDayNoteEditor(null);
@@ -313,7 +483,8 @@ export function App() {
       !parentForNewSkill &&
       !authMode &&
       !profileDialogOpen &&
-      !chartHabit
+      !chartHabit &&
+      !monthOverviewValue
     ) {
       return;
     }
@@ -326,6 +497,7 @@ export function App() {
       setAuthMode(null);
       setProfileDialogOpen(false);
       setChartHabit(null);
+      setMonthOverviewValue(null);
     }
 
     document.addEventListener("keydown", handleKeyDown);
@@ -337,15 +509,18 @@ export function App() {
     authMode,
     profileDialogOpen,
     chartHabit,
+    monthOverviewValue,
   ]);
 
-  function commit(nextState: TrackerState) {
+  function commit(nextState: TrackerState, dirtyMonthKeys: string[] = []) {
     const updatedState = { ...nextState, updatedAt: new Date().toISOString() };
     setState(updatedState);
+    setCloudMeta(getCloudMetaFromState(updatedState));
+    setLoadedMonthKeys(new Set(getStateMonthKeys(updatedState)));
     saveLocalState(updatedState);
     if (userId) {
       setSyncStatus("Сохраняю");
-      void saveCloudState(userId, updatedState).then(() => {
+      void saveCloudState(userId, updatedState, dirtyMonthKeys).then(() => {
         setSyncStatus("Синхронизация включена");
       });
     }
@@ -374,7 +549,7 @@ export function App() {
       return;
     }
 
-    const key = `${date}__${habitId}`;
+    const key = makeEntryKey(habitId, date);
     const entries = { ...state.entries };
 
     if (score) {
@@ -383,7 +558,7 @@ export function App() {
       delete entries[key];
     }
 
-    commit({ ...state, entries });
+    commit({ ...state, entries }, [getMonthInputValue(date)]);
     setPicker(null);
   }
 
@@ -391,6 +566,7 @@ export function App() {
     event: MouseEvent<HTMLButtonElement>,
     key: string,
     habitId: string,
+    habitName: string,
     date: string,
   ) {
     if (picker?.key === key) {
@@ -410,7 +586,7 @@ export function App() {
       window.innerWidth - popoverWidth - viewportPadding,
     );
 
-    setPicker({ key, habitId, date, top, left });
+    setPicker({ key, habitId, habitName, date, top, left });
     setDayNoteEditor(null);
   }
 
@@ -428,7 +604,37 @@ export function App() {
 
     setPicker(null);
     setDayNoteDraft(currentNote);
-    setDayNoteEditor({ date, top: clampedTop, left: clampedLeft });
+    setDayNoteEditor({ type: "day", date, top: clampedTop, left: clampedLeft });
+  }
+
+  function openEntryNoteEditorAtPosition(
+    date: string,
+    habitId: string,
+    habitName: string,
+    top: number,
+    left: number,
+  ) {
+    const currentNote = state.entryNotes[makeEntryKey(habitId, date)] ?? "";
+    const viewportPadding = 12;
+    const clampedTop = Math.min(
+      Math.max(viewportPadding, top),
+      window.innerHeight - noteEditorHeight - viewportPadding,
+    );
+    const clampedLeft = Math.min(
+      Math.max(viewportPadding, left),
+      window.innerWidth - noteEditorWidth - viewportPadding,
+    );
+
+    setPicker(null);
+    setDayNoteDraft(currentNote);
+    setDayNoteEditor({
+      type: "entry",
+      date,
+      habitId,
+      habitName,
+      top: clampedTop,
+      left: clampedLeft,
+    });
   }
 
   function openDayNoteEditor(event: MouseEvent<HTMLButtonElement>, date: string) {
@@ -455,15 +661,32 @@ export function App() {
     openDayNoteEditorAtPosition(date, top, left);
   }
 
-  function openDayNoteFromPicker(date: string) {
+  function openEntryNoteFromPicker(habitId: string, habitName: string, date: string) {
     if (!picker) return;
-    openDayNoteEditorAtPosition(date, picker.top, picker.left);
+    openEntryNoteEditorAtPosition(date, habitId, habitName, picker.top, picker.left);
   }
 
   function saveDayNote() {
     if (!dayNoteEditor) return;
 
     const normalized = dayNoteDraft.trim();
+    const dirtyMonthKeys = [getMonthInputValue(dayNoteEditor.date)];
+
+    if (dayNoteEditor.type === "entry") {
+      const entryKey = makeEntryKey(dayNoteEditor.habitId, dayNoteEditor.date);
+      const nextEntryNotes = { ...state.entryNotes };
+
+      if (normalized) {
+        nextEntryNotes[entryKey] = normalized;
+      } else {
+        delete nextEntryNotes[entryKey];
+      }
+
+      commit({ ...state, entryNotes: nextEntryNotes }, dirtyMonthKeys);
+      setDayNoteEditor(null);
+      return;
+    }
+
     const nextDayNotes = { ...state.dayNotes };
 
     if (normalized) {
@@ -472,32 +695,72 @@ export function App() {
       delete nextDayNotes[dayNoteEditor.date];
     }
 
-    commit({ ...state, dayNotes: nextDayNotes });
+    commit({ ...state, dayNotes: nextDayNotes }, dirtyMonthKeys);
     setDayNoteEditor(null);
   }
 
-  function deleteDayNote(date: string) {
+  function deleteDayNote() {
+    if (!dayNoteEditor) return;
+
+    if (dayNoteEditor.type === "entry") {
+      const entryKey = makeEntryKey(dayNoteEditor.habitId, dayNoteEditor.date);
+      const nextEntryNotes = { ...state.entryNotes };
+      delete nextEntryNotes[entryKey];
+      commit(
+        { ...state, entryNotes: nextEntryNotes },
+        [getMonthInputValue(dayNoteEditor.date)],
+      );
+      setDayNoteEditor(null);
+      return;
+    }
+
     const nextDayNotes = { ...state.dayNotes };
-    delete nextDayNotes[date];
-    commit({ ...state, dayNotes: nextDayNotes });
+    delete nextDayNotes[dayNoteEditor.date];
+    commit(
+      { ...state, dayNotes: nextDayNotes },
+      [getMonthInputValue(dayNoteEditor.date)],
+    );
     setDayNoteEditor(null);
   }
 
-  function deleteHabit(habitId: string) {
+  async function deleteHabit(habitId: string) {
+    let sourceState = state;
+
+    if (userId && cloudMeta?.firstMonth && cloudMeta?.lastMonth) {
+      const allMonthKeys = getMonthKeysBetween(cloudMeta.firstMonth, cloudMeta.lastMonth);
+      const missingMonthKeys = allMonthKeys.filter((monthKey) => !loadedMonthKeys.has(monthKey));
+
+      if (missingMonthKeys.length) {
+        setSyncStatus("Подгружаю историю");
+        const monthState = await loadCloudMonths(userId, missingMonthKeys);
+        sourceState = mergeMonthState(sourceState, monthState, missingMonthKeys);
+        setState(sourceState);
+        setLoadedMonthKeys(new Set(getStateMonthKeys(sourceState)));
+        saveLocalState(sourceState);
+      }
+    }
+
     const idsToDelete = new Set([
       habitId,
-      ...state.habits
+      ...sourceState.habits
         .filter((habit) => habit.parentId === habitId)
         .map((habit) => habit.id),
     ]);
     const entries = Object.fromEntries(
-      Object.entries(state.entries).filter(
+      Object.entries(sourceState.entries).filter(
         ([, entry]) => !idsToDelete.has(entry.habitId),
       ),
     );
-    const expandedProjectIds = (state.preferences?.expandedProjectIds ?? []).filter(
+    const entryNotes = Object.fromEntries(
+      Object.entries(sourceState.entryNotes).filter(([entryKey]) => {
+        const habitId = entryKey.slice(12);
+        return !idsToDelete.has(habitId);
+      }),
+    );
+    const expandedProjectIds = (sourceState.preferences?.expandedProjectIds ?? []).filter(
       (projectId) => !idsToDelete.has(projectId),
     );
+    const dirtyMonthKeys = getStateMonthKeys(sourceState);
 
     setExpandedProjects((currentProjects) => {
       const nextProjects = new Set(currentProjects);
@@ -506,14 +769,15 @@ export function App() {
     });
 
     commit({
-      ...state,
-      habits: state.habits.filter((habit) => !idsToDelete.has(habit.id)),
+      ...sourceState,
+      habits: sourceState.habits.filter((habit) => !idsToDelete.has(habit.id)),
       entries,
+      entryNotes,
       preferences: {
-        ...state.preferences,
+        ...sourceState.preferences,
         expandedProjectIds,
       },
-    });
+    }, dirtyMonthKeys);
     setHabitToDelete(null);
   }
 
@@ -606,6 +870,17 @@ export function App() {
     setChartHabit(habit);
     setChartRange("week");
     setChartView("donut");
+  }
+
+  async function openMonthOverview() {
+    const nextMonthValue = monthValue;
+    const monthKeys = [nextMonthValue];
+
+    if (userId && cloudMeta) {
+      await ensureCloudMonthsLoaded(monthKeys);
+    }
+
+    setMonthOverviewValue(nextMonthValue);
   }
 
   async function handleAuthClick() {
@@ -711,6 +986,37 @@ export function App() {
     setTheme((currentTheme) => (currentTheme === "light" ? "dark" : "light"));
   }
 
+  function saveCalendarPreferences(nextAnchorDate: string, nextPeriodDays = calendarPeriodDays) {
+    commit({
+      ...state,
+      preferences: {
+        ...state.preferences,
+        calendarAnchorDate: nextAnchorDate,
+        calendarPeriodDays: nextPeriodDays,
+      },
+    });
+  }
+
+  function goToPreviousPeriod() {
+    saveCalendarPreferences(shiftDate(calendarAnchorDate, -calendarPeriodDays));
+  }
+
+  function goToNextPeriod() {
+    saveCalendarPreferences(shiftDate(calendarAnchorDate, calendarPeriodDays));
+  }
+
+  function goToToday() {
+    saveCalendarPreferences(todayKey);
+  }
+
+  function handleMonthChange(value: string) {
+    saveCalendarPreferences(applyMonthToAnchor(calendarAnchorDate, value));
+  }
+
+  function handlePeriodChange(value: string) {
+    saveCalendarPreferences(calendarAnchorDate, Number(value) as CalendarPeriod);
+  }
+
   function toggleProject(projectId: string) {
     const nextProjects = new Set(expandedProjects);
     if (nextProjects.has(projectId)) {
@@ -746,7 +1052,11 @@ export function App() {
 
       <TrackerBand
         dates={dates}
+        monthValue={monthValue}
+        periodDays={calendarPeriodDays}
+        rangeLabel={rangeLabel}
         dayNotes={state.dayNotes}
+        entryNotes={state.entryNotes}
         entries={state.entries}
         expandedProjects={expandedProjects}
         newArea={newArea}
@@ -759,7 +1069,13 @@ export function App() {
         onNewHabitChange={setNewHabit}
         onOpenChart={openChart}
         onOpenDayNoteEditor={openDayNoteEditor}
+        onMonthChange={handleMonthChange}
+        onOpenMonthOverview={openMonthOverview}
+        onPeriodChange={handlePeriodChange}
+        onPreviousPeriod={goToPreviousPeriod}
+        onNextPeriod={goToNextPeriod}
         onOpenFullHabitName={setExpandedHabit}
+        onToday={goToToday}
         onTogglePicker={togglePicker}
         onToggleProject={toggleProject}
         todayKey={todayKey}
@@ -769,6 +1085,7 @@ export function App() {
       <MobileTracker
         childrenByParent={childrenByParent}
         dayNotes={state.dayNotes}
+        entryNotes={state.entryNotes}
         entries={state.entries}
         expandedProjects={expandedProjects}
         mobileDates={mobileDates}
@@ -786,8 +1103,8 @@ export function App() {
       <SummaryGrid stats={stats} />
 
       <ScorePopover
-        hasDayNote={Boolean(picker && state.dayNotes[picker.date])}
-        onOpenDayNote={openDayNoteFromPicker}
+        hasEntryNote={Boolean(picker && state.entryNotes[picker.key])}
+        onOpenEntryNote={openEntryNoteFromPicker}
         onSetScore={setScore}
         picker={picker}
         todayKey={todayKey}
@@ -856,6 +1173,16 @@ export function App() {
         onClose={() => setChartHabit(null)}
         onRangeChange={setChartRange}
         onViewChange={setChartView}
+      />
+
+      <MonthOverviewDialog
+        dates={monthOverviewDates}
+        dayNotes={state.dayNotes}
+        entryNotes={state.entryNotes}
+        entries={state.entries}
+        habits={monthOverviewHabits}
+        monthValue={monthOverviewValue}
+        onClose={() => setMonthOverviewValue(null)}
       />
 
       <AuthDialog

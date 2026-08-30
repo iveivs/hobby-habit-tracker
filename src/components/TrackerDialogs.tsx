@@ -5,16 +5,27 @@ import {
   dayNoteLimit,
   formatChartDate,
   formatLongDay,
+  formatMonthTitle,
+  getNotePreview,
   isFutureDay,
   scoreColors,
   scoreLabels,
   type AuthMode,
   type ChartRange,
   type ChartView,
-  type DayNoteEditorState,
+  type NoteEditorState,
   type PickerState,
 } from "../lib/tracker";
-import type { Habit, Score } from "../storage";
+import { makeEntryKey, type Habit, type Score } from "../storage";
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
 
 function ModalShell({
   ariaLabel,
@@ -39,16 +50,16 @@ function ModalShell({
 }
 
 type ScorePopoverProps = {
-  hasDayNote: boolean;
-  onOpenDayNote: (date: string) => void;
+  hasEntryNote: boolean;
+  onOpenEntryNote: (habitId: string, habitName: string, date: string) => void;
   onSetScore: (habitId: string, date: string, score: Score | null) => void;
   picker: PickerState | null;
   todayKey: string;
 };
 
 export function ScorePopover({
-  hasDayNote,
-  onOpenDayNote,
+  hasEntryNote,
+  onOpenEntryNote,
   onSetScore,
   picker,
   todayKey,
@@ -79,9 +90,9 @@ export function ScorePopover({
       <button
         className="note-popover-action"
         type="button"
-        onClick={() => onOpenDayNote(picker.date)}
+        onClick={() => onOpenEntryNote(picker.habitId, picker.habitName, picker.date)}
       >
-        {hasDayNote ? "Изменить заметку" : "Добавить заметку"}
+        {hasEntryNote ? "Изменить заметку ячейки" : "Добавить заметку к ячейке"}
       </button>
       {!futureDay ? (
         <button
@@ -98,10 +109,10 @@ export function ScorePopover({
 
 type DayNoteEditorProps = {
   draft: string;
-  editor: DayNoteEditorState | null;
+  editor: NoteEditorState | null;
   onChangeDraft: (value: string) => void;
   onClose: () => void;
-  onDelete: (date: string) => void;
+  onDelete: () => void;
   onSave: () => void;
 };
 
@@ -125,8 +136,13 @@ export function DayNoteEditor({
     >
       <div className="day-note-editor-head">
         <div>
-          <strong id="day-note-title">Заметка на день</strong>
-          <span>{formatLongDay(editor.date)}</span>
+          <strong id="day-note-title">
+            {editor.type === "entry" ? "Заметка к ячейке" : "Заметка на день"}
+          </strong>
+          <span>
+            {formatLongDay(editor.date)}
+            {editor.type === "entry" ? ` · ${editor.habitName}` : ""}
+          </span>
         </div>
         <button
           className="archive-button"
@@ -141,7 +157,11 @@ export function DayNoteEditor({
         <span className="sr-only">Текст заметки</span>
         <textarea
           maxLength={dayNoteLimit}
-          placeholder="Коротко зафиксируй мысль, событие или контекст этого дня"
+          placeholder={
+            editor.type === "entry"
+              ? "Коротко зафиксируй, что именно происходило в этой ячейке"
+              : "Коротко зафиксируй мысль, событие или контекст этого дня"
+          }
           value={draft}
           onChange={(event) => onChangeDraft(event.target.value)}
         />
@@ -155,7 +175,7 @@ export function DayNoteEditor({
         <button
           className="ghost-button note-delete-button"
           type="button"
-          onClick={() => onDelete(editor.date)}
+          onClick={onDelete}
         >
           Удалить
         </button>
@@ -409,6 +429,16 @@ type ChartPoint = {
   score: Score;
 };
 
+type MonthOverviewDialogProps = {
+  dates: Date[];
+  dayNotes: Record<string, string>;
+  entryNotes: Record<string, string>;
+  entries: Record<string, { habitId: string; date: string; score: Score }>;
+  habits: Habit[];
+  monthValue: string | null;
+  onClose: () => void;
+};
+
 type ChartDialogProps = {
   average: string;
   bestScore: number;
@@ -576,6 +606,442 @@ export function ChartDialog({
         ) : (
           <div className="chart-empty">Пока нет оценок за выбранный период.</div>
         )}
+      </div>
+    </ModalShell>
+  );
+}
+
+export function MonthOverviewDialog({
+  dates,
+  dayNotes,
+  entryNotes,
+  entries,
+  habits,
+  monthValue,
+  onClose,
+}: MonthOverviewDialogProps) {
+  if (!monthValue) return null;
+  const activeMonthValue = monthValue;
+  const activeMonthTitle = formatMonthTitle(activeMonthValue);
+
+  const monthNotes = dates
+    .map((date) => {
+      const day = date.toISOString().slice(0, 10);
+      const note = dayNotes[day];
+      return note ? { date: day, note } : null;
+    })
+    .filter(Boolean) as Array<{ date: string; note: string }>;
+
+  const monthEntryNotes = habits
+    .flatMap((habit) =>
+      dates.map((date) => {
+        const day = date.toISOString().slice(0, 10);
+        const entryKey = makeEntryKey(habit.id, day);
+        const note = entryNotes[entryKey];
+        return note ? { key: entryKey, date: day, habitName: habit.name, note } : null;
+      }),
+    )
+    .filter(Boolean) as Array<{
+    key: string;
+    date: string;
+    habitName: string;
+    note: string;
+  }>;
+
+  function handlePrint() {
+    const printWindow = window.open("", "_blank", "width=1400,height=900");
+    if (!printWindow) {
+      window.print();
+      return;
+    }
+
+    const headCells = dates
+      .map((date) => {
+        const day = date.toISOString().slice(0, 10);
+        const marker = dayNotes[day] ? '<span class="note-marker">✎</span>' : "";
+        return `<th><span class="day-number">${date.getDate()}</span>${marker}</th>`;
+      })
+      .join("");
+
+    const rows = habits
+      .map((habit) => {
+        const scoreCells = dates
+          .map((date) => {
+            const day = date.toISOString().slice(0, 10);
+            const entryKey = makeEntryKey(habit.id, day);
+            const entry = entries[entryKey];
+            const note = entryNotes[entryKey];
+            const backgroundColor = entry ? scoreColors[entry.score] : "transparent";
+            const content = entry?.score ?? "";
+            const marker = note ? '<span class="cell-note-marker"></span>' : "";
+            return `<td><span class="print-score-cell" style="background:${backgroundColor}">${content}${marker}</span></td>`;
+          })
+          .join("");
+
+        return `
+          <tr>
+            <th class="habit-cell ${habit.parentId ? "child" : ""}">
+              <div class="habit-line">
+                <span class="habit-mark" style="background:${habit.color}"></span>
+                <div class="habit-copy">
+                  <strong>${escapeHtml(habit.name)}</strong>
+                  <span>${escapeHtml(habit.area)}</span>
+                </div>
+              </div>
+            </th>
+            ${scoreCells}
+          </tr>
+        `;
+      })
+      .join("");
+
+    const notesBlock = monthNotes.length
+      ? `
+        <section class="notes-page">
+          <h2>Заметки по дням</h2>
+          ${monthNotes
+            .map(
+              ({ date, note }) => `
+                <article class="note-item">
+                  <strong>${escapeHtml(formatLongDay(date))}</strong>
+                  <p>${escapeHtml(note)}</p>
+                </article>
+              `,
+            )
+            .join("")}
+        </section>
+      `
+      : "";
+
+    const entryNotesBlock = monthEntryNotes.length
+      ? `
+        <section class="notes-page">
+          <h2>Заметки к ячейкам</h2>
+          ${monthEntryNotes
+            .map(
+              ({ date, habitName, note }) => `
+                <article class="note-item">
+                  <strong>${escapeHtml(`${habitName} · ${formatLongDay(date)}`)}</strong>
+                  <p>${escapeHtml(note)}</p>
+                </article>
+              `,
+            )
+            .join("")}
+        </section>
+      `
+      : "";
+
+    printWindow.document.write(`<!doctype html>
+      <html lang="ru">
+        <head>
+          <meta charset="utf-8" />
+          <title>Hab-Hob — ${escapeHtml(activeMonthTitle)}</title>
+          <style>
+            @page { size: landscape; margin: 10mm; }
+            * { box-sizing: border-box; }
+            body {
+              margin: 0;
+              color: #111;
+              font-family: Inter, Arial, sans-serif;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            .sheet {
+              width: 100%;
+            }
+            .sheet-head {
+              display: flex;
+              align-items: baseline;
+              justify-content: space-between;
+              gap: 12px;
+              margin-bottom: 5mm;
+            }
+            .sheet-head h1 {
+              margin: 0;
+              font-size: 16pt;
+            }
+            .sheet-head p {
+              margin: 0;
+              color: #444;
+              font-size: 9pt;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              table-layout: fixed;
+            }
+            th, td {
+              border: 1px solid #222;
+              text-align: center;
+              vertical-align: middle;
+              padding: 0;
+            }
+            thead th {
+              height: 10mm;
+              font-size: 9pt;
+              font-weight: 700;
+              background: #fff;
+            }
+            thead th:first-child {
+              width: 72mm;
+            }
+            .day-number {
+              display: block;
+              line-height: 1;
+            }
+            .note-marker {
+              display: block;
+              margin-top: 1mm;
+              color: #444;
+              font-size: 8pt;
+              line-height: 1;
+            }
+            .habit-cell {
+              width: 72mm;
+              min-width: 72mm;
+              padding: 2.2mm 2.8mm;
+              text-align: left;
+              background: #fff !important;
+            }
+            .habit-cell.child {
+              padding-left: 6mm;
+            }
+            .habit-line {
+              display: flex;
+              align-items: center;
+              gap: 3mm;
+            }
+            .habit-mark {
+              width: 3.2mm;
+              min-width: 3.2mm;
+              height: 12mm;
+              border-radius: 999px;
+            }
+            .habit-copy {
+              display: grid;
+              gap: 0.6mm;
+            }
+            .habit-copy strong {
+              font-size: 10pt;
+              line-height: 1.15;
+            }
+            .habit-copy span {
+              color: #555;
+              font-size: 8pt;
+              line-height: 1.1;
+            }
+            td {
+              width: 10mm;
+              height: 10mm;
+              font-size: 9pt;
+              font-weight: 700;
+            }
+            .print-score-cell {
+              position: relative;
+              display: grid;
+              place-items: center;
+              width: 100%;
+              height: 100%;
+              color: #17221c;
+            }
+            .cell-note-marker {
+              position: absolute;
+              top: 1mm;
+              right: 1mm;
+              width: 2.1mm;
+              height: 2.1mm;
+              border-radius: 999px;
+              background: #1f7a52;
+              box-shadow: 0 0 0 0.3mm rgba(255, 255, 255, 0.9);
+            }
+            .notes-page {
+              break-before: page;
+              padding-top: 2mm;
+            }
+            .notes-page h2 {
+              margin: 0 0 4mm;
+              font-size: 14pt;
+            }
+            .note-item {
+              margin-bottom: 3mm;
+              padding: 3mm;
+              border: 1px solid #999;
+            }
+            .note-item strong {
+              display: block;
+              margin-bottom: 1mm;
+              font-size: 10pt;
+            }
+            .note-item p {
+              margin: 0;
+              font-size: 9pt;
+              line-height: 1.45;
+              white-space: pre-wrap;
+            }
+          </style>
+        </head>
+        <body>
+          <main class="sheet">
+            <header class="sheet-head">
+              <h1>${escapeHtml(activeMonthTitle)}</h1>
+              <p>Hab-Hob</p>
+            </header>
+            <table>
+              <thead>
+                <tr>
+                  <th>Проект / навык</th>
+                  ${headCells}
+                </tr>
+              </thead>
+              <tbody>
+                ${rows}
+              </tbody>
+            </table>
+            ${notesBlock}
+            ${entryNotesBlock}
+          </main>
+        </body>
+      </html>`);
+
+    printWindow.document.close();
+    printWindow.focus();
+    window.setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
+  }
+
+  return (
+    <ModalShell ariaLabel="Закрыть обзор месяца" onClose={onClose}>
+      <div
+        className="confirm-dialog month-overview-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="month-overview-title"
+      >
+        <div className="chart-head">
+          <div>
+            <p className="eyebrow">Месячный обзор</p>
+            <h2 id="month-overview-title">{formatMonthTitle(monthValue)}</h2>
+          </div>
+          <button
+            className="archive-button"
+            type="button"
+            aria-label="Закрыть обзор месяца"
+            onClick={onClose}
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="month-overview-actions">
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={handlePrint}
+          >
+            Печать / PDF
+          </button>
+          <button className="primary-button" type="button" onClick={onClose}>
+            Готово
+          </button>
+        </div>
+
+        <div className="month-overview-scroll">
+          <table className="month-overview-table">
+            <thead>
+              <tr>
+                <th>Проект / навык</th>
+                {dates.map((date) => {
+                  const day = date.toISOString().slice(0, 10);
+                  const hasNote = Boolean(dayNotes[day]);
+                  return (
+                    <th key={day}>
+                      <span>{date.getDate()}</span>
+                      {hasNote ? (
+                        <i className="month-note-marker" aria-label={`Есть заметка на ${formatLongDay(day)}`}>
+                          ✎
+                        </i>
+                      ) : null}
+                    </th>
+                  );
+                })}
+              </tr>
+            </thead>
+            <tbody>
+              {habits.map((habit) => (
+                <tr key={habit.id}>
+                  <th className={habit.parentId ? "month-habit-cell child" : "month-habit-cell"}>
+                    <span
+                      className="habit-mark"
+                      style={{ backgroundColor: habit.color }}
+                    />
+                    <div className="month-habit-copy">
+                      <strong>{habit.name}</strong>
+                      <span>{habit.area}</span>
+                    </div>
+                  </th>
+                  {dates.map((date) => {
+                    const day = date.toISOString().slice(0, 10);
+                    const entryKey = makeEntryKey(habit.id, day);
+                    const entry = entries[entryKey];
+                    const entryNote = entryNotes[entryKey];
+                    return (
+                      <td key={`${habit.id}-${day}`}>
+                        <span
+                          className={`month-score-cell ${entry ? "filled" : "empty"} ${entryNote ? "has-note" : ""}`}
+                          style={entry ? { backgroundColor: scoreColors[entry.score] } : undefined}
+                          title={
+                            entryNote
+                              ? `${habit.name} · ${formatLongDay(day)}\n${getNotePreview(entryNote, 90)}`
+                              : `${habit.name}, ${formatLongDay(day)}`
+                          }
+                        >
+                          {entry?.score ?? ""}
+                          {entryNote ? <span className="month-score-note-marker" aria-hidden="true" /> : null}
+                        </span>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {monthNotes.length || monthEntryNotes.length ? (
+          <section className="month-notes-sheet" aria-label="Заметки месяца">
+            <h3>Заметки месяца</h3>
+            {monthNotes.length ? (
+              <div className="month-notes-group">
+                <h4>Заметки по дням</h4>
+                <div className="month-notes-list">
+                  {monthNotes.map(({ date, note }) => (
+                    <article key={date} className="month-note-item">
+                      <strong>{formatLongDay(date)}</strong>
+                      <p>{note}</p>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            {monthEntryNotes.length ? (
+              <div className="month-notes-group">
+                <h4>Заметки к ячейкам</h4>
+                <div className="month-notes-list">
+                  {monthEntryNotes.map(({ key, date, habitName, note }) => (
+                    <article key={key} className="month-note-item">
+                      <strong>
+                        {habitName} · {formatLongDay(date)}
+                      </strong>
+                      <p>{note}</p>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </section>
+        ) : null}
       </div>
     </ModalShell>
   );

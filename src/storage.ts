@@ -20,9 +20,10 @@ import {
   getDoc,
   getFirestore,
   onSnapshot,
-  setDoc,
+  writeBatch,
   type Firestore,
 } from "firebase/firestore";
+import { getMonthKey } from "./lib/tracker";
 
 export type Score = 1 | 2 | 3 | 4 | 5;
 
@@ -42,6 +43,7 @@ export type HabitEntry = {
 };
 
 export type DayNotes = Record<string, string>;
+export type EntryNotes = Record<string, string>;
 
 export type UserProfile = {
   nickname?: string;
@@ -49,14 +51,31 @@ export type UserProfile = {
 
 export type UserPreferences = {
   expandedProjectIds?: string[];
+  calendarAnchorDate?: string;
+  calendarPeriodDays?: number;
 };
 
 export type TrackerState = {
   habits: Habit[];
   entries: Record<string, HabitEntry>;
   dayNotes: DayNotes;
+  entryNotes: EntryNotes;
   profile?: UserProfile;
   preferences?: UserPreferences;
+  updatedAt: string;
+};
+
+export type CloudTrackerMeta = Omit<TrackerState, "entries" | "dayNotes" | "entryNotes"> & {
+  schemaVersion: 3;
+  firstMonth: string | null;
+  lastMonth: string | null;
+};
+
+type CloudTrackerMonth = {
+  monthKey: string;
+  entries: Record<string, HabitEntry>;
+  dayNotes: DayNotes;
+  entryNotes: EntryNotes;
   updatedAt: string;
 };
 
@@ -101,6 +120,10 @@ function ensureFirebase() {
 
 export function makeEntryKey(habitId: string, date: string) {
   return `${date}__${habitId}`;
+}
+
+export function getDateFromEntryKey(entryKey: string) {
+  return entryKey.slice(0, 10);
 }
 
 export function createDefaultState(): TrackerState {
@@ -149,6 +172,7 @@ export function createDefaultState(): TrackerState {
       },
     },
     dayNotes: {},
+    entryNotes: {},
     preferences: {
       expandedProjectIds: [],
     },
@@ -158,9 +182,16 @@ export function createDefaultState(): TrackerState {
 
 function normalizeState(state: TrackerState): TrackerState {
   const today = new Date().toISOString().slice(0, 10);
+  const calendarPeriodCandidate = state.preferences?.calendarPeriodDays;
+  const normalizedPeriod =
+    typeof calendarPeriodCandidate === "number" &&
+    [7, 10, 14, 30].includes(calendarPeriodCandidate)
+      ? calendarPeriodCandidate
+      : 10;
 
   return {
     ...state,
+    habits: Array.isArray(state.habits) ? state.habits.filter(Boolean) : [],
     entries: Object.fromEntries(
       Object.entries(state.entries ?? {}).flatMap(([key, entry]) => {
         if (!entry || typeof entry !== "object") return [];
@@ -179,13 +210,175 @@ function normalizeState(state: TrackerState): TrackerState {
         return normalized ? [[date, normalized]] : [];
       }),
     ),
+    entryNotes: Object.fromEntries(
+      Object.entries(state.entryNotes ?? {}).flatMap(([entryKey, note]) => {
+        if (typeof entryKey !== "string" || typeof note !== "string") return [];
+        const normalized = note.trim().slice(0, 500);
+        return normalized ? [[entryKey, normalized]] : [];
+      }),
+    ),
     profile: state.profile ?? {},
     preferences: {
       expandedProjectIds: (state.preferences?.expandedProjectIds ?? []).filter(
         (projectId): projectId is string => typeof projectId === "string",
       ),
+      calendarAnchorDate:
+        typeof state.preferences?.calendarAnchorDate === "string"
+          ? state.preferences.calendarAnchorDate
+          : today,
+      calendarPeriodDays: normalizedPeriod,
     },
   };
+}
+
+function createMetaRef(database: Firestore, userId: string) {
+  return doc(database, "users", userId, "tracker", "meta");
+}
+
+function createLegacyRef(database: Firestore, userId: string) {
+  return doc(database, "users", userId, "tracker", "state");
+}
+
+function createMonthRef(database: Firestore, userId: string, monthKey: string) {
+  return doc(database, "users", userId, "months", monthKey);
+}
+
+function getSortedStateMonthKeys(state: TrackerState) {
+  const monthKeys = new Set<string>();
+
+  Object.values(state.entries).forEach((entry) => {
+    monthKeys.add(getMonthKey(entry.date));
+  });
+
+  Object.keys(state.dayNotes).forEach((date) => {
+    monthKeys.add(getMonthKey(date));
+  });
+
+  Object.keys(state.entryNotes).forEach((entryKey) => {
+    monthKeys.add(getMonthKey(getDateFromEntryKey(entryKey)));
+  });
+
+  return [...monthKeys].sort();
+}
+
+function createCloudMeta(state: TrackerState): CloudTrackerMeta {
+  const monthKeys = getSortedStateMonthKeys(state);
+
+  return {
+    habits: state.habits,
+    profile: state.profile ?? {},
+    preferences: state.preferences ?? {},
+    updatedAt: state.updatedAt,
+    schemaVersion: 3,
+    firstMonth: monthKeys[0] ?? null,
+    lastMonth: monthKeys[monthKeys.length - 1] ?? null,
+  };
+}
+
+function buildStateFromMeta(meta: CloudTrackerMeta): TrackerState {
+  return normalizeState({
+    habits: meta.habits ?? [],
+    entries: {},
+    dayNotes: {},
+    entryNotes: {},
+    profile: meta.profile ?? {},
+    preferences: meta.preferences ?? {},
+    updatedAt: meta.updatedAt ?? new Date().toISOString(),
+  });
+}
+
+function splitStateByMonth(state: TrackerState) {
+  const months = new Map<string, CloudTrackerMonth>();
+
+  function ensureMonth(monthKey: string) {
+    const existing = months.get(monthKey);
+    if (existing) return existing;
+
+    const created: CloudTrackerMonth = {
+      monthKey,
+      entries: {},
+      dayNotes: {},
+      entryNotes: {},
+      updatedAt: state.updatedAt,
+    };
+    months.set(monthKey, created);
+    return created;
+  }
+
+  Object.entries(state.entries).forEach(([entryKey, entry]) => {
+    const month = ensureMonth(getMonthKey(entry.date));
+    month.entries[entryKey] = entry;
+  });
+
+  Object.entries(state.dayNotes).forEach(([date, note]) => {
+    const month = ensureMonth(getMonthKey(date));
+    month.dayNotes[date] = note;
+  });
+
+  Object.entries(state.entryNotes).forEach(([entryKey, note]) => {
+    const month = ensureMonth(getMonthKey(getDateFromEntryKey(entryKey)));
+    month.entryNotes[entryKey] = note;
+  });
+
+  return months;
+}
+
+function normalizeCloudMeta(meta: CloudTrackerMeta) {
+  const baseState = normalizeState({
+    habits: meta.habits ?? [],
+    entries: {},
+    dayNotes: {},
+    entryNotes: {},
+    profile: meta.profile ?? {},
+    preferences: meta.preferences ?? {},
+    updatedAt: meta.updatedAt ?? new Date().toISOString(),
+  });
+
+  return {
+    ...baseState,
+    schemaVersion: 3 as const,
+    firstMonth: typeof meta.firstMonth === "string" ? meta.firstMonth : null,
+    lastMonth: typeof meta.lastMonth === "string" ? meta.lastMonth : null,
+  };
+}
+
+export function getStateMonthKeys(state: TrackerState) {
+  return getSortedStateMonthKeys(state);
+}
+
+export function getCloudMetaFromState(state: TrackerState) {
+  return createCloudMeta(normalizeState(state));
+}
+
+export function mergeMonthState(
+  state: TrackerState,
+  monthState: Pick<TrackerState, "entries" | "dayNotes" | "entryNotes">,
+  monthKeysToReplace: string[],
+) {
+  const monthKeySet = new Set(monthKeysToReplace);
+
+  const preservedEntries = Object.fromEntries(
+    Object.entries(state.entries).filter(
+      ([, entry]) => !monthKeySet.has(getMonthKey(entry.date)),
+    ),
+  );
+
+  const preservedNotes = Object.fromEntries(
+    Object.entries(state.dayNotes).filter(([date]) => !monthKeySet.has(getMonthKey(date))),
+  );
+
+  const preservedEntryNotes = Object.fromEntries(
+    Object.entries(state.entryNotes).filter(
+      ([entryKey]) => !monthKeySet.has(getMonthKey(getDateFromEntryKey(entryKey))),
+    ),
+  );
+
+  return normalizeState({
+    ...state,
+    entries: { ...preservedEntries, ...monthState.entries },
+    dayNotes: { ...preservedNotes, ...monthState.dayNotes },
+    entryNotes: { ...preservedEntryNotes, ...monthState.entryNotes },
+  });
 }
 
 export function loadLocalState(): TrackerState {
@@ -282,30 +475,111 @@ export async function signOutOfGoogle() {
 
 export function subscribeCloudState(
   userId: string,
-  callback: (state: TrackerState | null) => void,
+  callback: (meta: CloudTrackerMeta | null) => void,
 ) {
   const firebase = ensureFirebase();
   if (!firebase) return () => undefined;
-  return onSnapshot(doc(firebase.db, "users", userId, "tracker", "state"), (snapshot) => {
-    callback(
-      snapshot.exists()
-        ? normalizeState(snapshot.data() as TrackerState)
-        : null,
-    );
+  return onSnapshot(createMetaRef(firebase.db, userId), (snapshot) => {
+    callback(snapshot.exists() ? normalizeCloudMeta(snapshot.data() as CloudTrackerMeta) : null);
   });
 }
 
-export async function loadCloudState(userId: string) {
+export async function loadCloudMeta(userId: string) {
   const firebase = ensureFirebase();
   if (!firebase) return null;
-  const snapshot = await getDoc(doc(firebase.db, "users", userId, "tracker", "state"));
-  return snapshot.exists()
-    ? normalizeState(snapshot.data() as TrackerState)
-    : null;
+  const metaSnapshot = await getDoc(createMetaRef(firebase.db, userId));
+  if (metaSnapshot.exists()) {
+    return normalizeCloudMeta(metaSnapshot.data() as CloudTrackerMeta);
+  }
+
+  const legacySnapshot = await getDoc(createLegacyRef(firebase.db, userId));
+  if (!legacySnapshot.exists()) return null;
+
+  return createCloudMeta(normalizeState(legacySnapshot.data() as TrackerState));
 }
 
-export async function saveCloudState(userId: string, state: TrackerState) {
+export async function migrateLegacyCloudState(userId: string) {
+  const firebase = ensureFirebase();
+  if (!firebase) return false;
+
+  const metaSnapshot = await getDoc(createMetaRef(firebase.db, userId));
+  if (metaSnapshot.exists()) return false;
+
+  const legacySnapshot = await getDoc(createLegacyRef(firebase.db, userId));
+  if (!legacySnapshot.exists()) return false;
+
+  const legacyState = normalizeState(legacySnapshot.data() as TrackerState);
+  await saveCloudState(userId, legacyState, getSortedStateMonthKeys(legacyState));
+  return true;
+}
+
+export async function loadCloudMonths(userId: string, monthKeys: string[]) {
+  const firebase = ensureFirebase();
+  if (!firebase) return { entries: {}, dayNotes: {}, entryNotes: {} };
+
+  const uniqueMonths = [...new Set(monthKeys)].sort();
+  const snapshots = await Promise.all(
+    uniqueMonths.map((monthKey) => getDoc(createMonthRef(firebase.db, userId, monthKey))),
+  );
+
+  return snapshots.reduce<Pick<TrackerState, "entries" | "dayNotes" | "entryNotes">>(
+    (accumulator, snapshot) => {
+      if (!snapshot.exists()) return accumulator;
+      const data = snapshot.data() as CloudTrackerMonth;
+      return {
+        entries: { ...accumulator.entries, ...(data.entries ?? {}) },
+        dayNotes: { ...accumulator.dayNotes, ...(data.dayNotes ?? {}) },
+        entryNotes: { ...accumulator.entryNotes, ...(data.entryNotes ?? {}) },
+      };
+    },
+    { entries: {}, dayNotes: {}, entryNotes: {} },
+  );
+}
+
+export async function loadCloudState(userId: string, monthKeys: string[]) {
+  const meta = await loadCloudMeta(userId);
+  if (!meta) return null;
+
+  const firebase = ensureFirebase();
+  if (!firebase) return null;
+
+  const metaSnapshot = await getDoc(createMetaRef(firebase.db, userId));
+  if (!metaSnapshot.exists()) {
+    const legacySnapshot = await getDoc(createLegacyRef(firebase.db, userId));
+    return legacySnapshot.exists()
+      ? normalizeState(legacySnapshot.data() as TrackerState)
+      : null;
+  }
+
+  const monthState = await loadCloudMonths(userId, monthKeys);
+  return mergeMonthState(buildStateFromMeta(meta), monthState, monthKeys);
+}
+
+export async function saveCloudState(
+  userId: string,
+  state: TrackerState,
+  dirtyMonthKeys: string[] = [],
+) {
   const firebase = ensureFirebase();
   if (!firebase) return;
-  await setDoc(doc(firebase.db, "users", userId, "tracker", "state"), normalizeState(state));
+
+  const normalizedState = normalizeState(state);
+  const batch = writeBatch(firebase.db);
+  const monthBuckets = splitStateByMonth(normalizedState);
+  const monthsToWrite = [...new Set(dirtyMonthKeys)].sort();
+
+  batch.set(createMetaRef(firebase.db, userId), createCloudMeta(normalizedState));
+
+  monthsToWrite.forEach((monthKey) => {
+    const monthDoc = monthBuckets.get(monthKey) ?? {
+      monthKey,
+      entries: {},
+      dayNotes: {},
+      entryNotes: {},
+      updatedAt: normalizedState.updatedAt,
+    };
+    batch.set(createMonthRef(firebase.db, userId, monthKey), monthDoc);
+  });
+
+  await batch.commit();
 }

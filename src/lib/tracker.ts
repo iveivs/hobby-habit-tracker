@@ -24,11 +24,15 @@ export const noteEditorHeight = 272;
 export const longHabitNameLimit = 38;
 export const dayNoteLimit = 500;
 export const themeStorageKey = "hobby-habit-theme";
+export const defaultCalendarPeriod = 10;
+export const mobileCalendarPeriod = 6;
+export const calendarPeriodOptions = [7, 10, 14, 30] as const;
 
 export type Theme = "light" | "dark";
 export type AuthMode = "signin" | "signup";
 export type ChartRange = "week" | "month" | "all";
 export type ChartView = "donut" | "timeline";
+export type CalendarPeriod = (typeof calendarPeriodOptions)[number];
 
 export const chartRanges: Record<ChartRange, string> = {
   week: "Неделя",
@@ -41,6 +45,13 @@ export const chartViews: Record<ChartView, string> = {
   timeline: "По дням",
 };
 
+export const calendarPeriodLabels: Record<CalendarPeriod, string> = {
+  7: "7 дней",
+  10: "10 дней",
+  14: "14 дней",
+  30: "Месяц",
+};
+
 export type HabitRow = Habit & {
   depth: number;
   childCount: number;
@@ -49,16 +60,27 @@ export type HabitRow = Habit & {
 export type PickerState = {
   key: string;
   habitId: string;
+  habitName: string;
   date: string;
   top: number;
   left: number;
 };
 
-export type DayNoteEditorState = {
-  date: string;
-  top: number;
-  left: number;
-};
+export type NoteEditorState =
+  | {
+      type: "day";
+      date: string;
+      top: number;
+      left: number;
+    }
+  | {
+      type: "entry";
+      date: string;
+      habitId: string;
+      habitName: string;
+      top: number;
+      left: number;
+    };
 
 export type TrackerStats = {
   habitCount: number;
@@ -79,19 +101,105 @@ export function dateKey(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
+export function parseDateKey(value: string) {
+  return new Date(`${value}T12:00:00`);
+}
+
 export function isFutureDay(day: string, todayKey = dateKey(new Date())) {
   return day > todayKey;
 }
 
-export function getDateWindow(daysBefore: number, daysAfter: number) {
+export function getDateWindow(anchor: string | Date, totalDays: number) {
   const dates: Date[] = [];
-  const today = new Date();
+  const anchorDate = typeof anchor === "string" ? parseDateKey(anchor) : new Date(anchor);
+  const daysBefore = Math.floor((totalDays - 1) / 2);
+  const daysAfter = totalDays - daysBefore - 1;
+
   for (let offset = -daysBefore; offset <= daysAfter; offset += 1) {
-    const date = new Date(today);
-    date.setDate(today.getDate() + offset);
+    const date = new Date(anchorDate);
+    date.setDate(anchorDate.getDate() + offset);
     dates.push(date);
   }
   return dates;
+}
+
+export function shiftDate(day: string, deltaDays: number) {
+  const nextDate = parseDateKey(day);
+  nextDate.setDate(nextDate.getDate() + deltaDays);
+  return dateKey(nextDate);
+}
+
+export function shiftMonth(day: string, deltaMonths: number) {
+  const current = parseDateKey(day);
+  const preferredDay = current.getDate();
+  const next = new Date(current);
+  next.setDate(1);
+  next.setMonth(next.getMonth() + deltaMonths);
+
+  const lastDayOfMonth = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+  next.setDate(Math.min(preferredDay, lastDayOfMonth));
+
+  return dateKey(next);
+}
+
+export function formatRangeLabel(dates: Date[]) {
+  if (!dates.length) return "";
+  const first = dates[0];
+  const last = dates[dates.length - 1];
+
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "2-digit",
+    month: "short",
+  }).formatRange(first, last);
+}
+
+export function getMonthInputValue(day: string) {
+  return day.slice(0, 7);
+}
+
+export function applyMonthToAnchor(currentDay: string, monthValue: string) {
+  const [year, month] = monthValue.split("-").map(Number);
+  const preferredDay = parseDateKey(currentDay).getDate();
+  const lastDayOfMonth = new Date(year, month, 0).getDate();
+  const nextDate = new Date(year, month - 1, Math.min(preferredDay, lastDayOfMonth), 12);
+  return dateKey(nextDate);
+}
+
+export function getMonthKey(value: string | Date) {
+  return (typeof value === "string" ? value : dateKey(value)).slice(0, 7);
+}
+
+export function getMonthKeysForDates(dates: Date[]) {
+  return [...new Set(dates.map((date) => getMonthKey(date)))];
+}
+
+export function getMonthKeysBetween(startMonth: string, endMonth: string) {
+  const result: string[] = [];
+  const cursor = new Date(`${startMonth}-01T12:00:00`);
+  const last = new Date(`${endMonth}-01T12:00:00`);
+
+  while (cursor <= last) {
+    result.push(`${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`);
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  return result;
+}
+
+export function getMonthDates(monthValue: string) {
+  const [year, month] = monthValue.split("-").map(Number);
+  const daysInMonth = new Date(year, month, 0).getDate();
+
+  return Array.from({ length: daysInMonth }, (_, index) => {
+    return new Date(year, month - 1, index + 1, 12);
+  });
+}
+
+export function formatMonthTitle(monthValue: string) {
+  return new Intl.DateTimeFormat("ru-RU", {
+    month: "long",
+    year: "numeric",
+  }).format(new Date(`${monthValue}-01T12:00:00`));
 }
 
 export function formatDay(date: Date) {

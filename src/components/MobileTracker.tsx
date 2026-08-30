@@ -12,6 +12,7 @@ import {
 type MobileTrackerProps = {
   childrenByParent: Map<string, Habit[]>;
   dayNotes: Record<string, string>;
+  entryNotes: Record<string, string>;
   entries: TrackerState["entries"];
   expandedProjects: Set<string>;
   mobileDates: Date[];
@@ -27,6 +28,7 @@ type MobileTrackerProps = {
     event: MouseEvent<HTMLButtonElement>,
     key: string,
     habitId: string,
+    habitName: string,
     date: string,
   ) => void;
   onToggleProject: (projectId: string) => void;
@@ -37,6 +39,7 @@ type MobileTrackerProps = {
 export function MobileTracker({
   childrenByParent,
   dayNotes,
+  entryNotes,
   entries,
   expandedProjects,
   mobileDates,
@@ -177,6 +180,7 @@ export function MobileTracker({
                       const day = dateKey(date);
                       const key = makeEntryKey(rowHabit.id, day);
                       const entry = entries[key];
+                      const entryNote = entryNotes[key];
                       return (
                         <div
                           className={day === todayKey ? "mobile-day today" : "mobile-day"}
@@ -187,7 +191,7 @@ export function MobileTracker({
                             <strong>{formatDay(date)}</strong>
                           </span>
                           <button
-                            className="score-cell"
+                            className={`score-cell ${entryNote ? "has-entry-note" : ""}`}
                             style={{
                               backgroundColor: entry
                                 ? scoreColors[entry.score]
@@ -195,11 +199,17 @@ export function MobileTracker({
                             }}
                             type="button"
                             aria-label={`${rowHabit.name}, ${formatDay(date)}`}
+                            title={
+                              entryNote
+                                ? `${rowHabit.name} · ${formatDay(date)}\n${getNotePreview(entryNote, 90)}`
+                                : `${rowHabit.name}, ${formatDay(date)}`
+                            }
                             onClick={(event) =>
-                              onTogglePicker(event, key, rowHabit.id, day)
+                              onTogglePicker(event, key, rowHabit.id, rowHabit.name, day)
                             }
                           >
                             {entry?.score ?? ""}
+                            {entryNote ? <span className="score-note-marker" aria-hidden="true" /> : null}
                           </button>
                         </div>
                       );
