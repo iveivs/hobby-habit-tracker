@@ -680,6 +680,18 @@ export function App() {
     openEntryNoteEditorAtPosition(date, habitId, habitName, picker.top, picker.left);
   }
 
+  function openEntryNoteEditor(
+    event: MouseEvent<HTMLButtonElement>,
+    habitId: string,
+    habitName: string,
+    date: string,
+  ) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const top = rect.bottom + 8;
+    const left = rect.left + rect.width / 2 - noteEditorWidth / 2;
+    openEntryNoteEditorAtPosition(date, habitId, habitName, top, left);
+  }
+
   function saveDayNote() {
     if (!dayNoteEditor) return;
 
@@ -1019,6 +1031,14 @@ export function App() {
     saveCalendarPreferences(shiftDate(calendarAnchorDate, calendarPeriodDays));
   }
 
+  function goToPreviousDay() {
+    saveCalendarPreferences(shiftDate(calendarAnchorDate, -1));
+  }
+
+  function goToNextDay() {
+    saveCalendarPreferences(shiftDate(calendarAnchorDate, 1));
+  }
+
   function goToToday() {
     saveCalendarPreferences(todayKey);
   }
@@ -1097,17 +1117,30 @@ export function App() {
       />
 
       <MobileTracker
+        calendarAnchorDate={calendarAnchorDate}
         childrenByParent={childrenByParent}
         dayNotes={state.dayNotes}
         entryNotes={state.entryNotes}
         entries={state.entries}
         expandedProjects={expandedProjects}
         mobileDates={mobileDates}
+        newArea={newArea}
+        newHabit={newHabit}
+        onAddHabit={addHabit}
         onAddSubSkill={startAddingSubSkill}
         onDeleteHabit={setHabitToDelete}
         onEditHabit={startEditingHabit}
         onOpenChart={openChart}
         onOpenDayNoteEditor={openDayNoteEditor}
+        onOpenEntryNoteEditor={openEntryNoteEditor}
+        onOpenMonthOverview={openMonthOverview}
+        onNewAreaChange={setNewArea}
+        onNewHabitChange={setNewHabit}
+        onNextDay={goToNextDay}
+        onPreviousDay={goToPreviousDay}
+        onSelectDate={(date) => saveCalendarPreferences(date)}
+        onSetScore={setScore}
+        onToday={goToToday}
         onTogglePicker={togglePicker}
         onToggleProject={toggleProject}
         rootHabits={rootHabits}

@@ -1859,6 +1859,20 @@ h2 {
     grid-template-columns: 1fr;
   }
 
+  .title-row {
+    gap: 10px;
+  }
+
+  .brand-mark {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+  }
+
+  h1 {
+    font-size: 44px;
+  }
+
   .calendar-toolbar,
   .calendar-range-group,
   .calendar-filters {
@@ -1895,7 +1909,7 @@ h2 {
   }
 
   .tracker-band {
-    overflow: visible;
+    display: none;
   }
 
   .table-wrap {
@@ -1904,74 +1918,191 @@ h2 {
 
   .mobile-tracker {
     display: grid;
-    gap: 12px;
+    gap: 14px;
     margin-top: 14px;
   }
 
-  .mobile-day-notes {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-  }
-
-  .mobile-note-card {
-    display: grid;
-    gap: 8px;
-    min-width: 0;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--surface-raised);
-    color: var(--text);
-    padding: 10px;
-    text-align: left;
-    box-shadow: 0 10px 26px var(--shadow-soft);
-  }
-
-  .mobile-note-card.has-note {
-    border-color: rgba(var(--primary-rgb), 0.42);
-    background: rgba(var(--primary-rgb), 0.08);
-  }
-
-  .mobile-note-date {
-    display: grid;
-    gap: 2px;
-    color: var(--text-muted);
-    font-size: 12px;
-    font-weight: 800;
-    text-transform: lowercase;
-  }
-
-  .mobile-note-date strong {
-    color: var(--text-strong);
-    font-size: 15px;
-    text-transform: none;
-  }
-
-  .mobile-note-body {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    min-width: 0;
-    color: var(--text-soft);
-    font-size: 12px;
-    font-weight: 700;
-    line-height: 1.35;
-  }
-
-  .mobile-note-body span:last-child {
-    display: -webkit-box;
-    overflow: hidden;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-  }
-
+  .mobile-date-panel,
+  .mobile-add-panel,
   .mobile-skill-card {
     min-width: 0;
-    overflow: hidden;
     border: 1px solid var(--border);
     border-radius: 8px;
     background: var(--surface-raised);
     box-shadow: 0 12px 30px var(--shadow-soft);
+  }
+
+  .mobile-date-panel {
+    display: grid;
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .mobile-date-nav {
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr) 42px;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .mobile-date-nav .calendar-nav-button {
+    width: 42px;
+    height: 42px;
+  }
+
+  .mobile-date-title {
+    display: grid;
+    min-width: 0;
+    gap: 3px;
+    text-align: center;
+  }
+
+  .mobile-date-title strong {
+    overflow: hidden;
+    color: var(--text-strong);
+    font-size: 22px;
+    font-weight: 900;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-date-title span {
+    overflow: hidden;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-date-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .mobile-date-strip {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 7px;
+    min-width: 0;
+  }
+
+  .mobile-date-chip {
+    position: relative;
+    display: grid;
+    justify-items: center;
+    align-content: start;
+    gap: 4px;
+    min-width: 0;
+    min-height: 66px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-soft);
+    color: var(--text);
+    padding: 8px 3px;
+    text-align: center;
+  }
+
+  .mobile-date-chip.active {
+    border-color: rgba(var(--primary-rgb), 0.58);
+    background: rgba(var(--primary-rgb), 0.08);
+    box-shadow: inset 0 0 0 1px rgba(var(--primary-rgb), 0.18);
+  }
+
+  .mobile-date-chip span {
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 900;
+    line-height: 1;
+    text-transform: lowercase;
+  }
+
+  .mobile-date-chip strong {
+    overflow: hidden;
+    max-width: 100%;
+    color: var(--text-strong);
+    font-size: 12px;
+    font-weight: 900;
+    line-height: 1.08;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-date-chip em {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 7px;
+    color: #142018;
+    font-size: 13px;
+    font-style: normal;
+    font-weight: 900;
+  }
+
+  .mobile-date-chip i {
+    position: absolute;
+    right: 6px;
+    top: 6px;
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: var(--primary);
+    box-shadow: 0 0 0 2px var(--surface-soft);
+  }
+
+  .mobile-selected-note {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    min-height: 40px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-soft);
+    color: var(--text-muted);
+    padding: 9px 11px;
+    text-align: left;
+  }
+
+  .mobile-selected-note.has-note {
+    border-color: rgba(var(--primary-rgb), 0.45);
+    background: rgba(var(--primary-rgb), 0.08);
+    color: var(--primary-strong);
+  }
+
+  .mobile-selected-note span:last-child {
+    overflow: hidden;
+    font-size: 14px;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-add-panel {
+    padding: 12px;
+  }
+
+  .mobile-add-toggle {
+    width: 100%;
+    min-height: 46px;
+  }
+
+  .mobile-habit-form {
+    display: grid;
+    gap: 10px;
+    margin-top: 10px;
+  }
+
+  .mobile-habit-form input {
+    width: 100%;
+    min-height: 46px;
+  }
+
+  .mobile-habit-form button {
+    min-height: 46px;
   }
 
   .mobile-skill-header {
@@ -1981,11 +2112,14 @@ h2 {
     width: 100%;
     gap: 12px;
     border: 0;
-    border-bottom: 1px solid var(--border-soft);
     background: transparent;
     color: var(--text);
-    padding: 14px;
+    padding: 16px 14px;
     text-align: left;
+  }
+
+  .mobile-skill-card.active .mobile-skill-header {
+    border-bottom: 1px solid var(--border-soft);
   }
 
   .mobile-skill-copy {
@@ -2016,11 +2150,63 @@ h2 {
     line-height: 1;
   }
 
+  .mobile-skill-details {
+    display: grid;
+    gap: 12px;
+    padding: 12px 14px 14px;
+  }
+
+  .mobile-selected-score {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+    border: 1px solid var(--border-soft);
+    border-radius: 8px;
+    background: var(--surface-soft);
+    padding: 12px;
+  }
+
+  .mobile-selected-score-copy {
+    display: grid;
+    min-width: 0;
+    gap: 4px;
+  }
+
+  .mobile-selected-score-copy span {
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .mobile-selected-score-copy strong {
+    color: var(--text-strong);
+    font-size: 22px;
+    line-height: 1;
+  }
+
+  .mobile-score-row {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .mobile-score-button {
+    display: grid;
+    place-items: center;
+    min-height: 42px;
+    border: 0;
+    border-radius: 8px;
+    color: #142018;
+    font-size: 20px;
+    font-weight: 900;
+  }
+
   .mobile-skill-actions {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
     gap: 8px;
-    padding: 12px 14px 0;
   }
 
   .compact-button {
@@ -2030,12 +2216,17 @@ h2 {
 
   .mobile-delete-button {
     align-self: center;
+    justify-self: stretch;
+    min-width: 42px;
+    min-height: 38px;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    color: var(--danger);
   }
 
-  .mobile-skill-stack {
+  .mobile-exercise-list {
     display: grid;
-    gap: 12px;
-    padding: 14px;
+    gap: 10px;
   }
 
   .mobile-day-row {
@@ -2045,8 +2236,10 @@ h2 {
   }
 
   .mobile-day-row.child {
-    padding-top: 12px;
-    border-top: 1px solid var(--border-soft);
+    padding: 12px;
+    border: 1px solid var(--border-soft);
+    border-radius: 8px;
+    background: var(--surface-soft);
   }
 
   .mobile-child-title {
@@ -2161,7 +2354,24 @@ h2 {
 
 @media (max-width: 520px) {
   h1 {
-    font-size: 42px;
+    font-size: 38px;
+  }
+
+  .app-shell {
+    width: min(100% - 16px, 1240px);
+    padding-top: 14px;
+  }
+
+  .brand-mark {
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+  }
+
+  .version-badge {
+    min-height: 24px;
+    font-size: 13px;
+    padding: 4px 8px;
   }
 
   .summary-grid {
@@ -2204,12 +2414,25 @@ h2 {
     grid-template-columns: 1fr 1fr;
   }
 
-  .mobile-day-notes {
-    grid-template-columns: 1fr 1fr;
+  .mobile-delete-button {
+    grid-column: 1 / -1;
+  }
+
+  .mobile-date-strip {
+    gap: 5px;
+  }
+
+  .mobile-date-chip {
+    min-height: 60px;
+    padding-inline: 2px;
+  }
+
+  .mobile-date-chip strong {
+    font-size: 11px;
   }
 
   .mobile-delete-button {
-    justify-self: start;
+    justify-self: stretch;
   }
 
   .mobile-days {
