@@ -16,10 +16,12 @@ import {
   type User,
 } from "firebase/auth";
 import {
+  deleteField,
   doc,
   getDoc,
   getFirestore,
   onSnapshot,
+  serverTimestamp,
   writeBatch,
   type Firestore,
 } from "firebase/firestore";
@@ -71,7 +73,7 @@ export type CloudTrackerMeta = Omit<TrackerState, "entries" | "dayNotes" | "entr
   lastMonth: string | null;
 };
 
-type CloudTrackerMonth = {
+export type CloudTrackerMonth = {
   monthKey: string;
   entries: Record<string, HabitEntry>;
   dayNotes: DayNotes;
@@ -476,12 +478,52 @@ export async function signOutOfGoogle() {
 export function subscribeCloudState(
   userId: string,
   callback: (meta: CloudTrackerMeta | null) => void,
+  onError?: (error: Error) => void,
 ) {
   const firebase = ensureFirebase();
   if (!firebase) return () => undefined;
-  return onSnapshot(createMetaRef(firebase.db, userId), (snapshot) => {
-    callback(snapshot.exists() ? normalizeCloudMeta(snapshot.data() as CloudTrackerMeta) : null);
-  });
+  return onSnapshot(
+    createMetaRef(firebase.db, userId),
+    (snapshot) => {
+      callback(
+        snapshot.exists()
+          ? normalizeCloudMeta(snapshot.data() as CloudTrackerMeta)
+          : null,
+      );
+    },
+    (error) => onError?.(error),
+  );
+}
+
+export function subscribeCloudMonths(
+  userId: string,
+  monthKeys: string[],
+  callback: (month: CloudTrackerMonth) => void,
+  onError?: (error: Error) => void,
+) {
+  const firebase = ensureFirebase();
+  if (!firebase) return () => undefined;
+
+  const unsubscribers = [...new Set(monthKeys)].map((monthKey) =>
+    onSnapshot(
+      createMonthRef(firebase.db, userId, monthKey),
+      (snapshot) => {
+        const data = snapshot.exists()
+          ? (snapshot.data() as CloudTrackerMonth)
+          : {
+              monthKey,
+              entries: {},
+              dayNotes: {},
+              entryNotes: {},
+              updatedAt: new Date(0).toISOString(),
+            };
+        callback(data);
+      },
+      (error) => onError?.(error),
+    ),
+  );
+
+  return () => unsubscribers.forEach((unsubscribe) => unsubscribe());
 }
 
 export async function loadCloudMeta(userId: string) {
@@ -582,4 +624,96 @@ export async function saveCloudState(
   });
 
   await batch.commit();
+}
+
+type CloudMonthField = "entries" | "dayNotes" | "entryNotes";
+
+async function saveCloudMonthField(
+  userId: string,
+  state: TrackerState,
+  monthKey: string,
+  field: CloudMonthField,
+  key: string,
+  value: HabitEntry | string | null,
+) {
+  const firebase = ensureFirebase();
+  if (!firebase) return;
+
+  const normalizedState = normalizeState(state);
+  const updatedAt = normalizedState.updatedAt;
+  const monthKeys = getSortedStateMonthKeys(normalizedState);
+  const batch = writeBatch(firebase.db);
+
+  batch.set(
+    createMonthRef(firebase.db, userId, monthKey),
+    {
+      monthKey,
+      [field]: { [key]: value ?? deleteField() },
+      updatedAt,
+      serverUpdatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
+  batch.set(
+    createMetaRef(firebase.db, userId),
+    {
+      updatedAt,
+      firstMonth: monthKeys[0] ?? null,
+      lastMonth: monthKeys[monthKeys.length - 1] ?? null,
+      serverUpdatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
+
+  await batch.commit();
+}
+
+export function saveCloudEntry(
+  userId: string,
+  state: TrackerState,
+  date: string,
+  entryKey: string,
+  entry: HabitEntry | null,
+) {
+  return saveCloudMonthField(
+    userId,
+    state,
+    getMonthKey(date),
+    "entries",
+    entryKey,
+    entry,
+  );
+}
+
+export function saveCloudDayNote(
+  userId: string,
+  state: TrackerState,
+  date: string,
+  note: string | null,
+) {
+  return saveCloudMonthField(
+    userId,
+    state,
+    getMonthKey(date),
+    "dayNotes",
+    date,
+    note,
+  );
+}
+
+export function saveCloudEntryNote(
+  userId: string,
+  state: TrackerState,
+  date: string,
+  entryKey: string,
+  note: string | null,
+) {
+  return saveCloudMonthField(
+    userId,
+    state,
+    getMonthKey(date),
+    "entryNotes",
+    entryKey,
+    note,
+  );
 }

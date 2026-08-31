@@ -19,6 +19,9 @@ import {
   migrateLegacyCloudState,
   registerWithEmail,
   resetEmailPassword,
+  saveCloudDayNote,
+  saveCloudEntry,
+  saveCloudEntryNote,
   saveCloudState,
   saveLocalState,
   sendVerificationEmail,
@@ -26,6 +29,7 @@ import {
   signInWithGoogle,
   signOutOfGoogle,
   subscribeCloudState,
+  subscribeCloudMonths,
   watchAuth,
   getCloudMetaFromState,
   getStateMonthKeys,
@@ -379,28 +383,62 @@ export function App() {
 
   useEffect(() => {
     if (!userId) return;
-    return subscribeCloudState(userId, (nextMeta) => {
-      if (!nextMeta) return;
-      if (nextMeta.updatedAt === state.updatedAt) {
+    return subscribeCloudState(
+      userId,
+      (nextMeta) => {
+        if (!nextMeta) return;
         setCloudMeta(nextMeta);
-        return;
-      }
+        setState((currentState) => {
+          if (nextMeta.updatedAt === currentState.updatedAt) return currentState;
 
-      void (async () => {
-        setSyncStatus("Обновляю данные");
-        await hydrateCloudState(userId, nextMeta);
-        setSyncStatus(`Синхронизировано: ${formatSyncTime()}`);
-      })();
-    });
-  }, [hydrateCloudState, state.updatedAt, userId]);
+          const nextState = {
+            ...currentState,
+            habits: nextMeta.habits,
+            profile: nextMeta.profile,
+            preferences: nextMeta.preferences,
+            updatedAt: nextMeta.updatedAt,
+          };
+          saveLocalState(nextState);
+          return nextState;
+        });
+        setExpandedProjects(
+          new Set(nextMeta.preferences?.expandedProjectIds ?? []),
+        );
+      },
+      () => setSyncStatus("Не удалось получить облачные данные"),
+    );
+  }, [userId]);
 
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      void ensureCloudMonthsLoaded(requiredMonthKeys);
-    }, 0);
+    if (!userId) return;
 
-    return () => window.clearTimeout(timeoutId);
-  }, [ensureCloudMonthsLoaded, requiredMonthKeys]);
+    return subscribeCloudMonths(
+      userId,
+      requiredMonthKeys,
+      (month) => {
+        setState((currentState) => {
+          const mergedState = mergeMonthState(
+            currentState,
+            {
+              entries: month.entries ?? {},
+              dayNotes: month.dayNotes ?? {},
+              entryNotes: month.entryNotes ?? {},
+            },
+            [month.monthKey],
+          );
+          saveLocalState(mergedState);
+          return mergedState;
+        });
+        setLoadedMonthKeys((currentMonths) => {
+          const nextMonths = new Set(currentMonths);
+          nextMonths.add(month.monthKey);
+          return nextMonths;
+        });
+        setSyncStatus(`Синхронизировано: ${formatSyncTime()}`);
+      },
+      () => setSyncStatus("Не удалось получить облачные данные"),
+    );
+  }, [requiredMonthKeys, userId]);
 
   useEffect(() => {
     if (!chartHabit) return;
@@ -525,7 +563,11 @@ export function App() {
     monthOverviewValue,
   ]);
 
-  function commit(nextState: TrackerState, dirtyMonthKeys: string[] = []) {
+  function commit(
+    nextState: TrackerState,
+    dirtyMonthKeys: string[] = [],
+    cloudSave?: (userId: string, state: TrackerState) => Promise<void>,
+  ) {
     const updatedState = { ...nextState, updatedAt: new Date().toISOString() };
     setState(updatedState);
     setCloudMeta(getCloudMetaFromState(updatedState));
@@ -533,7 +575,10 @@ export function App() {
     saveLocalState(updatedState);
     if (userId) {
       setSyncStatus("Сохраняю");
-      void saveCloudState(userId, updatedState, dirtyMonthKeys)
+      const save = cloudSave
+        ? cloudSave(userId, updatedState)
+        : saveCloudState(userId, updatedState, dirtyMonthKeys);
+      void save
         .then(() => {
           setSyncStatus(`Синхронизировано: ${formatSyncTime()}`);
         })
@@ -575,7 +620,12 @@ export function App() {
       delete entries[key];
     }
 
-    commit({ ...state, entries }, [getMonthInputValue(date)]);
+    commit(
+      { ...state, entries },
+      [getMonthInputValue(date)],
+      (nextUserId, nextState) =>
+        saveCloudEntry(nextUserId, nextState, date, key, entries[key] ?? null),
+    );
     setPicker(null);
   }
 
@@ -711,7 +761,18 @@ export function App() {
         delete nextEntryNotes[entryKey];
       }
 
-      commit({ ...state, entryNotes: nextEntryNotes }, dirtyMonthKeys);
+      commit(
+        { ...state, entryNotes: nextEntryNotes },
+        dirtyMonthKeys,
+        (nextUserId, nextState) =>
+          saveCloudEntryNote(
+            nextUserId,
+            nextState,
+            dayNoteEditor.date,
+            entryKey,
+            nextEntryNotes[entryKey] ?? null,
+          ),
+      );
       setDayNoteEditor(null);
       return;
     }
@@ -724,7 +785,17 @@ export function App() {
       delete nextDayNotes[dayNoteEditor.date];
     }
 
-    commit({ ...state, dayNotes: nextDayNotes }, dirtyMonthKeys);
+    commit(
+      { ...state, dayNotes: nextDayNotes },
+      dirtyMonthKeys,
+      (nextUserId, nextState) =>
+        saveCloudDayNote(
+          nextUserId,
+          nextState,
+          dayNoteEditor.date,
+          nextDayNotes[dayNoteEditor.date] ?? null,
+        ),
+    );
     setDayNoteEditor(null);
   }
 
@@ -738,6 +809,14 @@ export function App() {
       commit(
         { ...state, entryNotes: nextEntryNotes },
         [getMonthInputValue(dayNoteEditor.date)],
+        (nextUserId, nextState) =>
+          saveCloudEntryNote(
+            nextUserId,
+            nextState,
+            dayNoteEditor.date,
+            entryKey,
+            null,
+          ),
       );
       setDayNoteEditor(null);
       return;
@@ -748,6 +827,8 @@ export function App() {
     commit(
       { ...state, dayNotes: nextDayNotes },
       [getMonthInputValue(dayNoteEditor.date)],
+      (nextUserId, nextState) =>
+        saveCloudDayNote(nextUserId, nextState, dayNoteEditor.date, null),
     );
     setDayNoteEditor(null);
   }
