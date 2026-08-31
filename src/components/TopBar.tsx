@@ -5,10 +5,10 @@ type TopBarProps = {
   displayName: string;
   hasSync: boolean;
   isSignedIn: boolean;
-  nickname: string | null;
   onAuthClick: () => void;
   onEditProfile: () => void;
   onToggleTheme: () => void;
+  syncStatus: string;
   theme: Theme;
   userPhoto: string | null;
 };
@@ -18,10 +18,10 @@ export function TopBar({
   displayName,
   hasSync,
   isSignedIn,
-  nickname,
   onAuthClick,
   onEditProfile,
   onToggleTheme,
+  syncStatus,
   theme,
   userPhoto,
 }: TopBarProps) {
@@ -69,9 +69,7 @@ export function TopBar({
             <strong>{displayName}</strong>
             <span>
               {isSignedIn
-                ? nickname
-                  ? "Никнейм и данные общие для всех устройств"
-                  : "Данные общие для всех устройств"
+                ? syncStatus
                 : hasSync
                   ? "Email, пароль или Google для синхронизации"
                   : "Данные пока сохраняются в этом браузере"}

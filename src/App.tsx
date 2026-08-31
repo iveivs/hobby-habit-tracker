@@ -90,6 +90,13 @@ import {
 
 const appVersion = import.meta.env.VITE_APP_VERSION ?? "dev";
 
+function formatSyncTime(date = new Date()) {
+  return date.toLocaleTimeString("ru-RU", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function getAuthErrorMessage(error: unknown) {
   if (!(error instanceof FirebaseError)) return "Не удалось выполнить вход";
 
@@ -366,7 +373,7 @@ export function App() {
         setCloudMeta(getCloudMetaFromState(localState));
       }
 
-      setSyncStatus("Синхронизация включена");
+      setSyncStatus(`Синхронизировано: ${formatSyncTime()}`);
     });
   }, [hydrateCloudState]);
 
@@ -382,7 +389,7 @@ export function App() {
       void (async () => {
         setSyncStatus("Обновляю данные");
         await hydrateCloudState(userId, nextMeta);
-        setSyncStatus("Синхронизация включена");
+        setSyncStatus(`Синхронизировано: ${formatSyncTime()}`);
       })();
     });
   }, [hydrateCloudState, state.updatedAt, userId]);
@@ -526,9 +533,13 @@ export function App() {
     saveLocalState(updatedState);
     if (userId) {
       setSyncStatus("Сохраняю");
-      void saveCloudState(userId, updatedState, dirtyMonthKeys).then(() => {
-        setSyncStatus("Синхронизация включена");
-      });
+      void saveCloudState(userId, updatedState, dirtyMonthKeys)
+        .then(() => {
+          setSyncStatus(`Синхронизировано: ${formatSyncTime()}`);
+        })
+        .catch(() => {
+          setSyncStatus("Не удалось синхронизировать");
+        });
     }
   }
 
@@ -1068,10 +1079,10 @@ export function App() {
         displayName={displayName}
         hasSync={hasFirebaseConfig}
         isSignedIn={Boolean(userId)}
-        nickname={nickname}
         onAuthClick={handleAuthClick}
         onEditProfile={startEditingProfile}
         onToggleTheme={toggleTheme}
+        syncStatus={syncStatus}
         theme={theme}
         userPhoto={userPhoto}
       />
