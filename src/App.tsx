@@ -351,6 +351,10 @@ export function App() {
         return;
       }
 
+      setAuthMode(null);
+      setAuthPassword("");
+      setAuthPasswordRepeat("");
+      setAuthMessage("");
       setSyncStatus("Загружаю облачные данные");
       const nextMeta = await loadCloudMeta(user.uid);
       if (nextMeta) {
@@ -363,10 +367,6 @@ export function App() {
       }
 
       setSyncStatus("Синхронизация включена");
-      setAuthMode(null);
-      setAuthPassword("");
-      setAuthPasswordRepeat("");
-      setAuthMessage("");
     });
   }, [hydrateCloudState]);
 
