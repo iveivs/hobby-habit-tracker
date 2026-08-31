@@ -182,6 +182,7 @@ export function App() {
   const [newHabit, setNewHabit] = useState("");
   const [newArea, setNewArea] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
+  const [cloudHydrated, setCloudHydrated] = useState(false);
   const [userName, setUserName] = useState<string | null>(null);
   const [userPhoto, setUserPhoto] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState(
@@ -352,6 +353,7 @@ export function App() {
     });
 
     return watchAuth(async (user) => {
+      setCloudHydrated(false);
       setUserId(user?.uid ?? null);
       setUserName(user?.displayName ?? user?.email ?? null);
       setUserPhoto(user?.photoURL ?? null);
@@ -367,22 +369,27 @@ export function App() {
       setAuthPasswordRepeat("");
       setAuthMessage("");
       setSyncStatus("Загружаю облачные данные");
-      const nextMeta = await loadCloudMeta(user.uid);
-      if (nextMeta) {
-        await hydrateCloudState(user.uid, nextMeta);
-        await migrateLegacyCloudState(user.uid);
-      } else {
-        const localState = loadLocalState();
-        await saveCloudState(user.uid, localState, getStateMonthKeys(localState));
-        setCloudMeta(getCloudMetaFromState(localState));
-      }
+      try {
+        const nextMeta = await loadCloudMeta(user.uid);
+        if (nextMeta) {
+          await hydrateCloudState(user.uid, nextMeta);
+          await migrateLegacyCloudState(user.uid);
+        } else {
+          const localState = loadLocalState();
+          await saveCloudState(user.uid, localState, getStateMonthKeys(localState));
+          setCloudMeta(getCloudMetaFromState(localState));
+        }
 
-      setSyncStatus(`Синхронизировано: ${formatSyncTime()}`);
+        setCloudHydrated(true);
+        setSyncStatus(`Синхронизировано: ${formatSyncTime()}`);
+      } catch {
+        setSyncStatus("Не удалось загрузить облачные данные");
+      }
     });
   }, [hydrateCloudState]);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !cloudHydrated) return;
     return subscribeCloudState(
       userId,
       (nextMeta) => {
@@ -407,10 +414,10 @@ export function App() {
       },
       () => setSyncStatus("Не удалось получить облачные данные"),
     );
-  }, [userId]);
+  }, [cloudHydrated, userId]);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !cloudHydrated) return;
 
     return subscribeCloudMonths(
       userId,
@@ -438,7 +445,7 @@ export function App() {
       },
       () => setSyncStatus("Не удалось получить облачные данные"),
     );
-  }, [requiredMonthKeys, userId]);
+  }, [cloudHydrated, requiredMonthKeys, userId]);
 
   useEffect(() => {
     if (!chartHabit) return;
