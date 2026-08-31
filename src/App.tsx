@@ -462,20 +462,12 @@ export function App() {
       if (event.key === "Escape") setDayNoteEditor(null);
     }
 
-    function closeEditor() {
-      setDayNoteEditor(null);
-    }
-
     document.addEventListener("pointerdown", handlePointerDown);
     document.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("resize", closeEditor);
-    window.addEventListener("scroll", closeEditor, true);
 
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("resize", closeEditor);
-      window.removeEventListener("scroll", closeEditor, true);
     };
   }, [dayNoteEditor]);
 

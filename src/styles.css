@@ -2331,7 +2331,13 @@ h2 {
   }
 
   .day-note-editor {
-    width: min(420px, calc(100vw - 20px));
+    left: 10px !important;
+    right: 10px;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    top: auto !important;
+    width: auto;
+    max-height: calc(100dvh - 28px);
+    overflow: auto;
   }
 
   .day-note-editor-actions {
