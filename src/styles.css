@@ -1,32 +1,45 @@
 :root {
-  color: #18201d;
-  background: #f5f7f4;
+  color: #302d28;
+  background: #f0e5cf;
   color-scheme: light;
-  --page-bg-start: #fbfcfb;
-  --page-bg-end: #eef4f0;
-  --page-accent: rgba(74, 122, 86, 0.14);
-  --text: #18201d;
-  --text-strong: #111a16;
-  --text-muted: #637166;
-  --text-soft: #748076;
-  --surface: #ffffff;
-  --surface-soft: #fbfcfb;
-  --surface-table-head: #f8faf8;
-  --surface-subtle: #eef3ef;
-  --surface-raised: rgba(255, 255, 255, 0.9);
-  --border: #dce4dd;
-  --border-strong: #cbd7cf;
-  --border-soft: #e7ede8;
-  --border-faint: #edf1ee;
-  --primary: #264b3a;
-  --primary-strong: #315f48;
-  --danger: #b43c3c;
-  --primary-rgb: 38, 75, 58;
-  --shadow-soft: rgba(42, 61, 50, 0.09);
-  --shadow-card: rgba(42, 61, 50, 0.08);
-  --shadow-popover: rgba(28, 42, 34, 0.18);
-  --shadow-dialog: rgba(28, 42, 34, 0.24);
-  --scrim: rgba(23, 34, 28, 0.28);
+  --page-bg-start: #f6eedf;
+  --page-bg-end: #eadcc1;
+  --page-accent: rgba(196, 149, 48, 0.1);
+  --text: #302d28;
+  --text-strong: #211f1b;
+  --text-muted: #6e6557;
+  --text-soft: #817562;
+  --surface: #f7eedc;
+  --surface-soft: #efe2c8;
+  --surface-table-head: #e8d9bd;
+  --surface-subtle: #e5d6b9;
+  --surface-raised: rgba(248, 239, 221, 0.94);
+  --border: #bdad8d;
+  --border-strong: #9d8965;
+  --border-soft: #d1c19f;
+  --border-faint: #ddcfb4;
+  --primary: #6c7040;
+  --primary-strong: #555c2f;
+  --danger: #b94d38;
+  --primary-rgb: 108, 112, 64;
+  --action: #c7962c;
+  --action-text: #29231a;
+  --workspace: #34322e;
+  --workspace-soft: #3b3832;
+  --workspace-head: #2d2c29;
+  --workspace-subtle: #454138;
+  --workspace-text: #f1e5cd;
+  --workspace-strong: #fff4dc;
+  --workspace-muted: #c8b99d;
+  --workspace-soft-text: #ad9f87;
+  --workspace-border: #766a52;
+  --workspace-border-soft: #5e5749;
+  --workspace-border-faint: #4d493f;
+  --shadow-soft: rgba(67, 51, 29, 0.12);
+  --shadow-card: rgba(67, 51, 29, 0.12);
+  --shadow-popover: rgba(45, 35, 22, 0.24);
+  --shadow-dialog: rgba(45, 35, 22, 0.3);
+  --scrim: rgba(35, 28, 20, 0.38);
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
@@ -35,34 +48,47 @@
 }
 
 :root[data-theme="dark"] {
-  color: #eef5ef;
-  background: #111712;
+  color: #eadfc8;
+  background: #292724;
   color-scheme: dark;
-  --page-bg-start: #111712;
-  --page-bg-end: #17221b;
-  --page-accent: rgba(90, 151, 111, 0.16);
-  --text: #eef5ef;
-  --text-strong: #f8fbf8;
-  --text-muted: #b2c0b7;
-  --text-soft: #9caaa2;
-  --surface: #1b241e;
-  --surface-soft: #151d18;
-  --surface-table-head: #202a23;
-  --surface-subtle: #263229;
-  --surface-raised: rgba(27, 36, 30, 0.94);
-  --border: #314137;
-  --border-strong: #45574b;
-  --border-soft: #2c3a31;
-  --border-faint: #243028;
-  --primary: #7fc09b;
-  --primary-strong: #a3d4b7;
-  --danger: #e06666;
-  --primary-rgb: 127, 192, 155;
+  --page-bg-start: #292724;
+  --page-bg-end: #34302a;
+  --page-accent: rgba(190, 146, 56, 0.1);
+  --text: #eadfc8;
+  --text-strong: #f7ecd5;
+  --text-muted: #b8aa91;
+  --text-soft: #998c76;
+  --surface: #37342f;
+  --surface-soft: #2f2d29;
+  --surface-table-head: #3c3832;
+  --surface-subtle: #454036;
+  --surface-raised: rgba(55, 52, 47, 0.96);
+  --border: #665d4d;
+  --border-strong: #8b7959;
+  --border-soft: #554e42;
+  --border-faint: #454139;
+  --primary: #aaa05c;
+  --primary-strong: #d0bc78;
+  --danger: #d26950;
+  --primary-rgb: 170, 160, 92;
+  --action: #c59a36;
+  --action-text: #28231b;
+  --workspace: #33312d;
+  --workspace-soft: #3a3731;
+  --workspace-head: #2c2b28;
+  --workspace-subtle: #454138;
+  --workspace-text: #eadfc8;
+  --workspace-strong: #f7ecd5;
+  --workspace-muted: #b8aa91;
+  --workspace-soft-text: #998c76;
+  --workspace-border: #71654d;
+  --workspace-border-soft: #5a5245;
+  --workspace-border-faint: #48443c;
   --shadow-soft: rgba(0, 0, 0, 0.22);
   --shadow-card: rgba(0, 0, 0, 0.22);
   --shadow-popover: rgba(0, 0, 0, 0.42);
   --shadow-dialog: rgba(0, 0, 0, 0.48);
-  --scrim: rgba(5, 9, 7, 0.62);
+  --scrim: rgba(18, 15, 11, 0.68);
 }
 
 * {
@@ -458,8 +484,8 @@ h2 {
 .habit-form button {
   border: 0;
   border-radius: 8px;
-  background: var(--primary);
-  color: var(--surface);
+  background: var(--action);
+  color: var(--action-text);
   font-weight: 800;
   padding: 0 18px;
 }
@@ -1824,6 +1850,49 @@ h2 {
   border-radius: 4px;
 }
 
+/* The tracking workspace stays visually distinct from navigation and summaries. */
+.tracker-table,
+.notes-band {
+  --text: var(--workspace-text);
+  --text-strong: var(--workspace-strong);
+  --text-muted: var(--workspace-muted);
+  --text-soft: var(--workspace-soft-text);
+  --surface: var(--workspace);
+  --surface-soft: var(--workspace-soft);
+  --surface-table-head: var(--workspace-head);
+  --surface-subtle: var(--workspace-subtle);
+  --surface-raised: var(--workspace);
+  --border: var(--workspace-border);
+  --border-strong: var(--workspace-border);
+  --border-soft: var(--workspace-border-soft);
+  --border-faint: var(--workspace-border-faint);
+  color: var(--workspace-text);
+}
+
+.tracker-table {
+  background: var(--workspace);
+}
+
+.tracker-table tbody td,
+.tracker-table td:last-child {
+  background: var(--workspace);
+}
+
+.notes-band h2 {
+  color: var(--workspace-strong);
+}
+
+:root:not([data-theme="dark"]) .brand-mark {
+  border: 2px solid #332f28;
+}
+
+:root:not([data-theme="dark"]) .habit-form button:hover,
+:root:not([data-theme="dark"]) .habit-form button:focus-visible,
+:root[data-theme="dark"] .habit-form button:hover,
+:root[data-theme="dark"] .habit-form button:focus-visible {
+  filter: brightness(1.06);
+}
+
 @media (min-width: 1800px) {
   .app-shell {
     width: min(1960px, calc(100% - 56px));
@@ -1925,6 +1994,20 @@ h2 {
   .mobile-date-panel,
   .mobile-add-panel,
   .mobile-skill-card {
+    --text: var(--workspace-text);
+    --text-strong: var(--workspace-strong);
+    --text-muted: var(--workspace-muted);
+    --text-soft: var(--workspace-soft-text);
+    --surface: var(--workspace);
+    --surface-soft: var(--workspace-soft);
+    --surface-table-head: var(--workspace-head);
+    --surface-subtle: var(--workspace-subtle);
+    --surface-raised: var(--workspace);
+    --border: var(--workspace-border);
+    --border-strong: var(--workspace-border);
+    --border-soft: var(--workspace-border-soft);
+    --border-faint: var(--workspace-border-faint);
+    color: var(--workspace-text);
     min-width: 0;
     border: 1px solid var(--border);
     border-radius: 8px;
