@@ -144,9 +144,7 @@ export function MobileTracker({
             const day = dateKey(date);
             const note = dayNotes[day];
             const dayEntries = Object.values(entries).filter((entry) => entry.date === day);
-            const bestScore = dayEntries.length
-              ? Math.max(...dayEntries.map((entry) => entry.score))
-              : null;
+            const hasEntries = dayEntries.length > 0;
 
             return (
               <button
@@ -155,15 +153,19 @@ export function MobileTracker({
                 }`}
                 key={day}
                 type="button"
+                aria-label={`${formatLongDay(day)}. ${
+                  hasEntries ? "Есть отметки" : "Нет отметок"
+                }${note ? ". Есть заметка" : ""}`}
                 onClick={() => onSelectDate(day)}
               >
                 <span>{formatWeekday(date)}</span>
                 <strong>{formatDay(date)}</strong>
-                {bestScore ? (
-                  <em style={{ backgroundColor: scoreColors[bestScore as Score] }}>
-                    {bestScore}
-                  </em>
-                ) : null}
+                <em
+                  className={`mobile-day-status ${hasEntries ? "complete" : "empty"}`}
+                  aria-hidden="true"
+                >
+                  {hasEntries ? "✓" : ""}
+                </em>
                 {note ? <i aria-hidden="true" /> : null}
               </button>
             );

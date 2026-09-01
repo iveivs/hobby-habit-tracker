@@ -2029,16 +2029,27 @@ h2 {
     white-space: nowrap;
   }
 
-  .mobile-date-chip em {
+  .mobile-date-chip .mobile-day-status {
     display: grid;
     place-items: center;
     width: 24px;
     height: 24px;
-    border-radius: 7px;
-    color: #142018;
+    border: 2px solid transparent;
+    border-radius: 999px;
     font-size: 13px;
     font-style: normal;
     font-weight: 900;
+    line-height: 1;
+  }
+
+  .mobile-date-chip .mobile-day-status.complete {
+    background: var(--primary);
+    color: #142018;
+  }
+
+  .mobile-date-chip .mobile-day-status.empty {
+    border-color: var(--text-muted);
+    opacity: 0.62;
   }
 
   .mobile-date-chip i {
