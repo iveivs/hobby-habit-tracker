@@ -499,7 +499,16 @@ h2 {
 .tracker-table {
   width: 100%;
   min-width: 1040px;
+  table-layout: fixed;
   border-collapse: collapse;
+}
+
+.tracker-table .habit-column {
+  width: 310px;
+}
+
+.tracker-table .actions-column {
+  width: 54px;
 }
 
 .tracker-table th,
@@ -584,12 +593,6 @@ h2 {
   height: 64px;
 }
 
-.tracker-table thead th:not(.habit-heading):not(.actions-heading),
-.tracker-table tbody td:not(:last-child) {
-  width: 72px;
-  min-width: 72px;
-}
-
 .habit-heading,
 .habit-cell {
   left: 0;
@@ -601,11 +604,17 @@ h2 {
 }
 
 .habit-cell {
+  padding: 0;
+  text-align: left !important;
+  vertical-align: middle;
+}
+
+.habit-cell-content {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
   padding: 12px 14px 12px calc(14px + var(--depth, 0) * 24px);
-  text-align: left !important;
 }
 
 .subskill-row .habit-cell {
@@ -1902,16 +1911,14 @@ h2 {
     min-width: 1200px;
   }
 
-  .tracker-table thead th:not(.habit-heading):not(.actions-heading),
-  .tracker-table tbody td:not(:last-child) {
-    width: 82px;
-    min-width: 82px;
-  }
-
   .habit-heading,
   .habit-cell {
     width: 340px;
     min-width: 340px;
+  }
+
+  .tracker-table .habit-column {
+    width: 340px;
   }
 }
 

@@ -152,7 +152,17 @@ export function TrackerBand({
       </div>
 
       <div className="table-wrap">
-        <table className="tracker-table">
+        <table
+          className="tracker-table"
+          style={{ minWidth: `${310 + dates.length * 72 + 54}px` }}
+        >
+          <colgroup>
+            <col className="habit-column" />
+            {dates.map((date) => (
+              <col className="day-column" key={dateKey(date)} />
+            ))}
+            <col className="actions-column" />
+          </colgroup>
           <thead>
             <tr>
               <th className="habit-heading">Проект / навык</th>
@@ -202,72 +212,74 @@ export function TrackerBand({
                   className="habit-cell"
                   style={{ "--depth": habit.depth } as CSSProperties}
                 >
-                  <span
-                    className="habit-mark"
-                    style={{ backgroundColor: habit.color }}
-                  />
-                  <div className="habit-copy">
-                    <div className="habit-title-row">
-                      {!habit.parentId && habit.childCount ? (
+                  <div className="habit-cell-content">
+                    <span
+                      className="habit-mark"
+                      style={{ backgroundColor: habit.color }}
+                    />
+                    <div className="habit-copy">
+                      <div className="habit-title-row">
+                        {!habit.parentId && habit.childCount ? (
+                          <button
+                            className="expand-button"
+                            type="button"
+                            aria-label={
+                              expandedProjects.has(habit.id)
+                                ? `Свернуть упражнения ${habit.name}`
+                                : `Раскрыть упражнения ${habit.name}`
+                            }
+                            aria-expanded={expandedProjects.has(habit.id)}
+                            onClick={() => onToggleProject(habit.id)}
+                          >
+                            {expandedProjects.has(habit.id) ? "⌄" : "›"}
+                          </button>
+                        ) : null}
+                        <strong className="habit-title">{habit.name}</strong>
+                        {habit.name.length > longHabitNameLimit ? (
+                          <button
+                            className="more-name-button"
+                            type="button"
+                            aria-label={`Показать полное название ${habit.name}`}
+                            onClick={() => onOpenFullHabitName(habit)}
+                          >
+                            ...
+                          </button>
+                        ) : null}
                         <button
-                          className="expand-button"
+                          className="chart-button"
                           type="button"
-                          aria-label={
-                            expandedProjects.has(habit.id)
-                              ? `Свернуть упражнения ${habit.name}`
-                              : `Раскрыть упражнения ${habit.name}`
-                          }
-                          aria-expanded={expandedProjects.has(habit.id)}
-                          onClick={() => onToggleProject(habit.id)}
+                          aria-label={`Открыть диаграмму ${habit.name}`}
+                          onClick={() => onOpenChart(habit)}
                         >
-                          {expandedProjects.has(habit.id) ? "⌄" : "›"}
+                          ▥
                         </button>
-                      ) : null}
-                      <strong className="habit-title">{habit.name}</strong>
-                      {habit.name.length > longHabitNameLimit ? (
                         <button
-                          className="more-name-button"
+                          className="edit-button"
                           type="button"
-                          aria-label={`Показать полное название ${habit.name}`}
-                          onClick={() => onOpenFullHabitName(habit)}
+                          aria-label={`Редактировать ${habit.name}`}
+                          onClick={() => onEditHabit(habit)}
                         >
-                          ...
+                          ⚙
                         </button>
-                      ) : null}
-                      <button
-                        className="chart-button"
-                        type="button"
-                        aria-label={`Открыть диаграмму ${habit.name}`}
-                        onClick={() => onOpenChart(habit)}
-                      >
-                        ▥
-                      </button>
-                      <button
-                        className="edit-button"
-                        type="button"
-                        aria-label={`Редактировать ${habit.name}`}
-                        onClick={() => onEditHabit(habit)}
-                      >
-                        ⚙
-                      </button>
-                      {!habit.parentId ? (
-                        <button
-                          className="add-subskill-button"
-                          type="button"
-                          aria-label={`Добавить упражнение в ${habit.name}`}
-                          onClick={() => onAddSubSkill(habit)}
-                        >
-                          +
-                        </button>
-                      ) : null}
+                        {!habit.parentId ? (
+                          <button
+                            className="add-subskill-button"
+                            type="button"
+                            aria-label={`Добавить упражнение в ${habit.name}`}
+                            onClick={() => onAddSubSkill(habit)}
+                          >
+                            +
+                          </button>
+                        ) : null}
+                      </div>
+                      <span>
+                        {habit.parentId
+                          ? habit.area
+                          : habit.childCount
+                            ? `${habit.area} · ${formatSubskillCount(habit.childCount)}`
+                            : habit.area}
+                      </span>
                     </div>
-                    <span>
-                      {habit.parentId
-                        ? habit.area
-                        : habit.childCount
-                          ? `${habit.area} · ${formatSubskillCount(habit.childCount)}`
-                          : habit.area}
-                    </span>
                   </div>
                 </th>
                 {dates.map((date) => {

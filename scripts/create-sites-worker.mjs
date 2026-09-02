@@ -56,15 +56,19 @@ await writeFile(
     `  const path = new URL(url).pathname;\n` +
     `  return path === "/" ? "/index.html" : path;\n` +
     `}\n\n` +
-    `function responseFor(asset) {\n` +
+  `function responseFor(path, asset) {\n` +
+    `  const cacheControl = path === "/index.html" || path === "/sw.js" || path === "/site.webmanifest" || path.startsWith("/assets/")\n` +
+    `    ? "no-cache"\n` +
+    `    : "public, max-age=300";\n` +
+    `\n` +
     `  return new Response(Uint8Array.from(atob(asset.body), (char) => char.charCodeAt(0)), {\n` +
-    `    headers: { "content-type": asset.type, "cache-control": "public, max-age=300" },\n` +
+    `    headers: { "content-type": asset.type, "cache-control": cacheControl },\n` +
     `  });\n` +
     `}\n\n` +
     `export default {\n` +
     `  fetch(request) {\n` +
     `    const asset = assets[normalizePath(request.url)] ?? assets["/index.html"];\n` +
-    `    return responseFor(asset);\n` +
+    `    return responseFor(normalizePath(request.url), asset);\n` +
     `  },\n` +
     `};\n`,
 );

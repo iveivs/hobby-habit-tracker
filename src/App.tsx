@@ -343,6 +343,9 @@ export function App() {
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     localStorage.setItem(themeStorageKey, theme);
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute("content", theme === "dark" ? "#292724" : "#f0e5cf");
   }, [theme]);
 
   useEffect(() => {
