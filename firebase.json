@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "hobby-habit-tracker-iveivs",
     "public": "dist",
     "ignore": [
       "firebase.json",
