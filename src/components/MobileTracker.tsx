@@ -148,9 +148,9 @@ export function MobileTracker({
 
             return (
               <button
-                className={`mobile-date-chip ${day === selectedDate ? "active" : ""} ${
-                  note ? "has-note" : ""
-                }`}
+                className={`mobile-date-chip ${day === todayKey ? "current" : ""} ${
+                  day === selectedDate ? "active" : ""
+                } ${note ? "has-note" : ""}`}
                 key={day}
                 type="button"
                 aria-label={`${formatLongDay(day)}. ${

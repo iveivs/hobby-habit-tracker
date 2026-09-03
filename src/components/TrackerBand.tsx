@@ -289,7 +289,7 @@ export function TrackerBand({
                   const entryNote = entryNotes[key];
 
                   return (
-                    <td key={key}>
+                    <td key={key} className={day === todayKey ? "today-column" : ""}>
                       <button
                         className={`score-cell ${entryNote ? "has-entry-note" : ""}`}
                         data-today={day === todayKey ? "true" : undefined}

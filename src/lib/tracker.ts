@@ -138,7 +138,12 @@ export function getDayDistance(fromDay: string, toDay: string) {
 }
 
 export function getEffectiveCalendarAnchorDate(savedAnchorDate: string | undefined, todayKey: string) {
-  return savedAnchorDate ?? todayKey;
+  if (!savedAnchorDate) return todayKey;
+
+  const daysBehindToday = getDayDistance(savedAnchorDate, todayKey);
+  return daysBehindToday >= 0 && daysBehindToday <= trailingFutureDays
+    ? todayKey
+    : savedAnchorDate;
 }
 
 export function shiftMonth(day: string, deltaMonths: number) {
