@@ -1931,6 +1931,12 @@ h2 {
 }
 
 @media (max-width: 840px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+
   .app-shell {
     width: min(100% - 20px, 1240px);
     padding-top: 18px;
