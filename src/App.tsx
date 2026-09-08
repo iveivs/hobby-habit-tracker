@@ -9,6 +9,7 @@ import {
 import { FirebaseError } from "firebase/app";
 import {
   completeRedirectSignIn,
+  createEmptyState,
   hasFirebaseConfig,
   makeEntryKey,
   loadCloudMeta,
@@ -19,6 +20,7 @@ import {
   migrateLegacyCloudState,
   registerWithEmail,
   resetEmailPassword,
+  resetCloudState,
   saveCloudDayNote,
   saveCloudEntry,
   saveCloudEntryNote,
@@ -53,6 +55,7 @@ import {
   FullNameDialog,
   MonthOverviewDialog,
   ProfileDialog,
+  ResetDataDialog,
   ScorePopover,
 } from "./components/TrackerDialogs";
 import {
@@ -93,6 +96,7 @@ import {
 } from "./lib/tracker";
 
 const appVersion = import.meta.env.VITE_APP_VERSION ?? "dev";
+const resetConfirmationPhrase = "СТЕРЕТЬ ВСЁ";
 
 function formatSyncTime(date = new Date()) {
   return date.toLocaleTimeString("ru-RU", {
@@ -204,6 +208,10 @@ export function App() {
   const [newSkillName, setNewSkillName] = useState("");
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [nicknameDraft, setNicknameDraft] = useState("");
+  const [resetDataDialogOpen, setResetDataDialogOpen] = useState(false);
+  const [resetConfirmation, setResetConfirmation] = useState("");
+  const [resetBusy, setResetBusy] = useState(false);
+  const [resetMessage, setResetMessage] = useState("");
   const [chartHabit, setChartHabit] = useState<Habit | null>(null);
   const [chartRange, setChartRange] = useState<ChartRange>("week");
   const [chartView, setChartView] = useState<ChartView>("donut");
@@ -544,6 +552,7 @@ export function App() {
       !parentForNewSkill &&
       !authMode &&
       !profileDialogOpen &&
+      !resetDataDialogOpen &&
       !chartHabit &&
       !monthOverviewValue
     ) {
@@ -557,6 +566,7 @@ export function App() {
       setParentForNewSkill(null);
       setAuthMode(null);
       setProfileDialogOpen(false);
+      if (!resetBusy) setResetDataDialogOpen(false);
       setChartHabit(null);
       setMonthOverviewValue(null);
     }
@@ -569,6 +579,8 @@ export function App() {
     parentForNewSkill,
     authMode,
     profileDialogOpen,
+    resetBusy,
+    resetDataDialogOpen,
     chartHabit,
     monthOverviewValue,
   ]);
@@ -986,6 +998,54 @@ export function App() {
     setProfileDialogOpen(false);
   }
 
+  function startResettingData() {
+    setProfileDialogOpen(false);
+    setResetConfirmation("");
+    setResetMessage("");
+    setResetDataDialogOpen(true);
+  }
+
+  function closeResetDataDialog() {
+    if (resetBusy) return;
+    setResetDataDialogOpen(false);
+  }
+
+  async function resetAllData(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (resetBusy || resetConfirmation.trim() !== resetConfirmationPhrase) return;
+
+    const emptyState = { ...createEmptyState(), profile: state.profile ?? {} };
+    setResetBusy(true);
+    setResetMessage("");
+
+    try {
+      if (userId) await resetCloudState(userId, emptyState);
+
+      setState(emptyState);
+      setCloudMeta(userId ? getCloudMetaFromState(emptyState) : null);
+      setLoadedMonthKeys(new Set());
+      setExpandedProjects(new Set());
+      saveLocalState(emptyState);
+      setPicker(null);
+      setDayNoteEditor(null);
+      setHabitToDelete(null);
+      setHabitToEdit(null);
+      setParentForNewSkill(null);
+      setExpandedHabit(null);
+      setChartHabit(null);
+      setMonthOverviewValue(null);
+      setResetDataDialogOpen(false);
+      setResetConfirmation("");
+      setSyncStatus(
+        userId ? `Синхронизировано: ${formatSyncTime()}` : "Данные очищены",
+      );
+    } catch {
+      setResetMessage("Не удалось удалить данные. Проверь подключение и попробуй ещё раз.");
+    } finally {
+      setResetBusy(false);
+    }
+  }
+
   function openChart(habit: Habit) {
     setChartHabit(habit);
     setChartRange("week");
@@ -1305,9 +1365,20 @@ export function App() {
         draft={nicknameDraft}
         onChange={setNicknameDraft}
         onClose={() => setProfileDialogOpen(false)}
+        onResetClick={startResettingData}
         onSubmit={saveProfile}
         open={profileDialogOpen}
         userName={userName}
+      />
+
+      <ResetDataDialog
+        busy={resetBusy}
+        confirmation={resetConfirmation}
+        message={resetMessage}
+        onChange={setResetConfirmation}
+        onClose={closeResetDataDialog}
+        onSubmit={resetAllData}
+        open={resetDataDialogOpen}
       />
 
       <ChartDialog

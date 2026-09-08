@@ -1,6 +1,6 @@
 {
   "name": "hobby-habit-tracker",
-  "version": "1.8.38",
+  "version": "1.9.0",
   "private": true,
   "engines": {
     "node": ">=20.19.0"

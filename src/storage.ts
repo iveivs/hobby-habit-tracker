@@ -16,9 +16,11 @@ import {
   type User,
 } from "firebase/auth";
 import {
+  collection,
   deleteField,
   doc,
   getDoc,
+  getDocs,
   getFirestore,
   onSnapshot,
   serverTimestamp,
@@ -177,6 +179,24 @@ export function createDefaultState(): TrackerState {
     entryNotes: {},
     preferences: {
       expandedProjectIds: [],
+    },
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+export function createEmptyState(): TrackerState {
+  const today = new Date().toISOString().slice(0, 10);
+
+  return {
+    habits: [],
+    entries: {},
+    dayNotes: {},
+    entryNotes: {},
+    profile: {},
+    preferences: {
+      expandedProjectIds: [],
+      calendarAnchorDate: today,
+      calendarPeriodDays: 10,
     },
     updatedAt: new Date().toISOString(),
   };
@@ -624,6 +644,29 @@ export async function saveCloudState(
   });
 
   await batch.commit();
+}
+
+export async function resetCloudState(userId: string, state: TrackerState) {
+  const firebase = ensureFirebase();
+  if (!firebase) return;
+
+  const normalizedState = normalizeState(state);
+  const monthsSnapshot = await getDocs(
+    collection(firebase.db, "users", userId, "months"),
+  );
+
+  if (monthsSnapshot.size > 498) {
+    throw new Error("Too many month documents to reset in one batch");
+  }
+
+  const resetBatch = writeBatch(firebase.db);
+  resetBatch.set(createMetaRef(firebase.db, userId), {
+    ...createCloudMeta(normalizedState),
+    serverUpdatedAt: serverTimestamp(),
+  });
+  resetBatch.delete(createLegacyRef(firebase.db, userId));
+  monthsSnapshot.docs.forEach((month) => resetBatch.delete(month.ref));
+  await resetBatch.commit();
 }
 
 type CloudMonthField = "entries" | "dayNotes" | "entryNotes";

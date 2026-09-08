@@ -1122,6 +1122,60 @@ h2 {
   font-size: 13px;
 }
 
+.profile-danger-zone {
+  display: grid;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.profile-danger-zone > div {
+  display: grid;
+  gap: 4px;
+}
+
+.profile-danger-zone strong {
+  color: var(--danger);
+}
+
+.profile-danger-zone span {
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.danger-outline-button {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid color-mix(in srgb, var(--danger) 62%, var(--border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--danger) 7%, var(--surface));
+  color: var(--danger);
+  font-weight: 800;
+}
+
+.danger-outline-button:hover,
+.danger-outline-button:focus-visible {
+  border-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+  outline: none;
+}
+
+.reset-data-dialog > p {
+  margin-bottom: 0;
+}
+
+.reset-data-dialog label strong {
+  color: var(--text-strong);
+}
+
+.reset-data-message {
+  margin: 0 !important;
+  color: var(--danger) !important;
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .chart-dialog {
   display: grid;
   gap: 16px;

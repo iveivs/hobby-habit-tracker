@@ -377,6 +377,7 @@ type ProfileDialogProps = {
   draft: string;
   onChange: (value: string) => void;
   onClose: () => void;
+  onResetClick: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   open: boolean;
   userName: string | null;
@@ -386,6 +387,7 @@ export function ProfileDialog({
   draft,
   onChange,
   onClose,
+  onResetClick,
   onSubmit,
   open,
   userName,
@@ -422,6 +424,82 @@ export function ProfileDialog({
           </button>
           <button className="primary-button" type="submit">
             Сохранить
+          </button>
+        </div>
+        <div className="profile-danger-zone">
+          <div>
+            <strong>Начать с чистого листа</strong>
+            <span>Удалить привычки, упражнения, оценки и заметки.</span>
+          </div>
+          <button className="danger-outline-button" type="button" onClick={onResetClick}>
+            Стереть все данные
+          </button>
+        </div>
+      </form>
+    </ModalShell>
+  );
+}
+
+type ResetDataDialogProps = {
+  busy: boolean;
+  confirmation: string;
+  message: string;
+  onChange: (value: string) => void;
+  onClose: () => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  open: boolean;
+};
+
+export function ResetDataDialog({
+  busy,
+  confirmation,
+  message,
+  onChange,
+  onClose,
+  onSubmit,
+  open,
+}: ResetDataDialogProps) {
+  if (!open) return null;
+
+  const confirmationPhrase = "СТЕРЕТЬ ВСЁ";
+  const canReset = confirmation.trim() === confirmationPhrase && !busy;
+
+  return (
+    <ModalShell ariaLabel="Закрыть подтверждение очистки" onClose={onClose}>
+      <form
+        className="confirm-dialog edit-dialog reset-data-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="reset-data-title"
+        onSubmit={onSubmit}
+      >
+        <h2 id="reset-data-title">Стереть все данные?</h2>
+        <p>
+          Привычки, упражнения, оценки и заметки будут удалены на всех устройствах.
+          Аккаунт останется доступен. Отменить это действие нельзя.
+        </p>
+        <label>
+          <span>
+            Напиши <strong>{confirmationPhrase}</strong>
+          </span>
+          <input
+            autoComplete="off"
+            placeholder={confirmationPhrase}
+            value={confirmation}
+            onChange={(event) => onChange(event.target.value)}
+          />
+        </label>
+        {message ? (
+          <p className="reset-data-message" role="status">
+            {message}
+          </p>
+        ) : null}
+        <div className="dialog-actions">
+          <button className="secondary-button" type="button" onClick={onClose} disabled={busy}>
+            Отмена
+          </button>
+          <button className="danger-button" type="submit" disabled={!canReset}>
+            {busy ? "Удаляю..." : "Стереть всё"}
           </button>
         </div>
       </form>
