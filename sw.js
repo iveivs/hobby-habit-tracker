@@ -1,5 +1,5 @@
 const CACHE_PREFIX = "hab-hob-shell-";
-const CACHE_NAME = `${CACHE_PREFIX}v1`;
+const CACHE_NAME = `${CACHE_PREFIX}v2`;
 const appRoot = new URL("./", self.registration.scope);
 const shellFiles = [
   appRoot.href,
