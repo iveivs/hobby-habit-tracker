@@ -27,7 +27,7 @@ import {
   writeBatch,
   type Firestore,
 } from "firebase/firestore";
-import { getMonthKey } from "./lib/tracker";
+import { dateKey, getMonthKey } from "./lib/tracker";
 
 export type Score = 1 | 2 | 3 | 4 | 5;
 
@@ -55,6 +55,8 @@ export type UserProfile = {
 
 export type UserPreferences = {
   expandedProjectIds?: string[];
+  expandedMobileExerciseIds?: string[];
+  mobileDateExpanded?: boolean;
   calendarAnchorDate?: string;
   calendarPeriodDays?: number;
 };
@@ -131,7 +133,7 @@ export function getDateFromEntryKey(entryKey: string) {
 }
 
 export function createDefaultState(): TrackerState {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = dateKey(new Date());
   const guitarId = crypto.randomUUID();
   const habits: Habit[] = [
     { id: guitarId, name: "Гитара", area: "творчество", color: "#2f80ed" },
@@ -179,13 +181,15 @@ export function createDefaultState(): TrackerState {
     entryNotes: {},
     preferences: {
       expandedProjectIds: [],
+      expandedMobileExerciseIds: [],
+      mobileDateExpanded: false,
     },
     updatedAt: new Date().toISOString(),
   };
 }
 
 export function createEmptyState(): TrackerState {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = dateKey(new Date());
 
   return {
     habits: [],
@@ -195,6 +199,8 @@ export function createEmptyState(): TrackerState {
     profile: {},
     preferences: {
       expandedProjectIds: [],
+      expandedMobileExerciseIds: [],
+      mobileDateExpanded: false,
       calendarAnchorDate: today,
       calendarPeriodDays: 10,
     },
@@ -203,8 +209,19 @@ export function createEmptyState(): TrackerState {
 }
 
 function normalizeState(state: TrackerState): TrackerState {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = dateKey(new Date());
   const calendarPeriodCandidate = state.preferences?.calendarPeriodDays;
+  const hasMobileViewPreferences =
+    typeof state.preferences?.mobileDateExpanded === "boolean" ||
+    Array.isArray(state.preferences?.expandedMobileExerciseIds);
+  const savedCalendarAnchorDate = state.preferences?.calendarAnchorDate;
+  const normalizedCalendarAnchorDate =
+    hasMobileViewPreferences &&
+    typeof savedCalendarAnchorDate === "string" &&
+    /^\d{4}-\d{2}-\d{2}$/.test(savedCalendarAnchorDate) &&
+    !Number.isNaN(new Date(`${savedCalendarAnchorDate}T12:00:00`).getTime())
+      ? savedCalendarAnchorDate
+      : today;
   const normalizedPeriod =
     typeof calendarPeriodCandidate === "number" &&
     [7, 10, 14, 30].includes(calendarPeriodCandidate)
@@ -244,10 +261,11 @@ function normalizeState(state: TrackerState): TrackerState {
       expandedProjectIds: (state.preferences?.expandedProjectIds ?? []).filter(
         (projectId): projectId is string => typeof projectId === "string",
       ),
-      calendarAnchorDate:
-        typeof state.preferences?.calendarAnchorDate === "string"
-          ? state.preferences.calendarAnchorDate
-          : today,
+      expandedMobileExerciseIds: (
+        state.preferences?.expandedMobileExerciseIds ?? []
+      ).filter((habitId): habitId is string => typeof habitId === "string"),
+      mobileDateExpanded: state.preferences?.mobileDateExpanded === true,
+      calendarAnchorDate: normalizedCalendarAnchorDate,
       calendarPeriodDays: normalizedPeriod,
     },
   };

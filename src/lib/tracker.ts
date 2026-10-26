@@ -100,7 +100,10 @@ export function loadTheme(): Theme {
 }
 
 export function dateKey(date: Date) {
-  return date.toISOString().slice(0, 10);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 export function parseDateKey(value: string) {
@@ -243,6 +246,21 @@ export function formatLongDay(date: string) {
 export function getNotePreview(note: string, limit = 72) {
   if (note.length <= limit) return note;
   return `${note.slice(0, limit).trimEnd()}...`;
+}
+
+export function lightenHexColor(color: string, amount: number) {
+  const match = /^#([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(color);
+  if (!match) return color;
+
+  const ratio = Math.max(0, Math.min(amount, 100)) / 100;
+  const channels = match.slice(1).map((channel) => {
+    const value = Number.parseInt(channel, 16);
+    return Math.round(value + (255 - value) * ratio)
+      .toString(16)
+      .padStart(2, "0");
+  });
+
+  return `#${channels.join("")}`;
 }
 
 export function getStats(state: TrackerState): TrackerStats {
