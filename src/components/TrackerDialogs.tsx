@@ -429,7 +429,7 @@ export function ProfileDialog({
         <div className="profile-danger-zone">
           <div>
             <strong>Начать с чистого листа</strong>
-            <span>Удалить привычки, упражнения, оценки и заметки.</span>
+            <span>Удалить привычки, оценки, заметки и записи сна.</span>
           </div>
           <button className="danger-outline-button" type="button" onClick={onResetClick}>
             Стереть все данные
@@ -475,8 +475,8 @@ export function ResetDataDialog({
       >
         <h2 id="reset-data-title">Стереть все данные?</h2>
         <p>
-          Привычки, упражнения, оценки и заметки будут удалены на всех устройствах.
-          Аккаунт останется доступен. Отменить это действие нельзя.
+          Привычки, упражнения, оценки, заметки и записи сна будут удалены на всех
+          устройствах. Аккаунт останется доступен. Отменить это действие нельзя.
         </p>
         <label>
           <span>

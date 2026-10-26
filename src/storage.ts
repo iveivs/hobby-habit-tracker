@@ -46,6 +46,15 @@ export type HabitEntry = {
   score: Score;
 };
 
+export type SleepKind = "night" | "day";
+
+export type SleepEntry = {
+  id: string;
+  kind: SleepKind;
+  startAt: string;
+  endAt: string;
+};
+
 export type DayNotes = Record<string, string>;
 export type EntryNotes = Record<string, string>;
 
@@ -66,12 +75,16 @@ export type TrackerState = {
   entries: Record<string, HabitEntry>;
   dayNotes: DayNotes;
   entryNotes: EntryNotes;
+  sleepEntries: Record<string, SleepEntry>;
   profile?: UserProfile;
   preferences?: UserPreferences;
   updatedAt: string;
 };
 
-export type CloudTrackerMeta = Omit<TrackerState, "entries" | "dayNotes" | "entryNotes"> & {
+export type CloudTrackerMeta = Omit<
+  TrackerState,
+  "entries" | "dayNotes" | "entryNotes" | "sleepEntries"
+> & {
   schemaVersion: 3;
   firstMonth: string | null;
   lastMonth: string | null;
@@ -82,6 +95,7 @@ export type CloudTrackerMonth = {
   entries: Record<string, HabitEntry>;
   dayNotes: DayNotes;
   entryNotes: EntryNotes;
+  sleepEntries: Record<string, SleepEntry>;
   updatedAt: string;
 };
 
@@ -179,6 +193,7 @@ export function createDefaultState(): TrackerState {
     },
     dayNotes: {},
     entryNotes: {},
+    sleepEntries: {},
     preferences: {
       expandedProjectIds: [],
       expandedMobileExerciseIds: [],
@@ -196,6 +211,7 @@ export function createEmptyState(): TrackerState {
     entries: {},
     dayNotes: {},
     entryNotes: {},
+    sleepEntries: {},
     profile: {},
     preferences: {
       expandedProjectIds: [],
@@ -256,6 +272,33 @@ function normalizeState(state: TrackerState): TrackerState {
         return normalized ? [[entryKey, normalized]] : [];
       }),
     ),
+    sleepEntries: Object.fromEntries(
+      Object.entries(state.sleepEntries ?? {}).flatMap(([entryId, entry]) => {
+        if (!entry || typeof entry !== "object") return [];
+        if (
+          typeof entry.id !== "string" ||
+          entry.id !== entryId ||
+          (entry.kind !== "night" && entry.kind !== "day") ||
+          typeof entry.startAt !== "string" ||
+          typeof entry.endAt !== "string"
+        ) {
+          return [];
+        }
+
+        const startTime = new Date(entry.startAt).getTime();
+        const endTime = new Date(entry.endAt).getTime();
+        if (
+          !Number.isFinite(startTime) ||
+          !Number.isFinite(endTime) ||
+          endTime <= startTime ||
+          endTime - startTime > 86_400_000
+        ) {
+          return [];
+        }
+
+        return [[entryId, entry]];
+      }),
+    ),
     profile: state.profile ?? {},
     preferences: {
       expandedProjectIds: (state.preferences?.expandedProjectIds ?? []).filter(
@@ -298,6 +341,10 @@ function getSortedStateMonthKeys(state: TrackerState) {
     monthKeys.add(getMonthKey(getDateFromEntryKey(entryKey)));
   });
 
+  Object.values(state.sleepEntries).forEach((entry) => {
+    monthKeys.add(getMonthKey(entry.endAt.slice(0, 10)));
+  });
+
   return [...monthKeys].sort();
 }
 
@@ -321,6 +368,7 @@ function buildStateFromMeta(meta: CloudTrackerMeta): TrackerState {
     entries: {},
     dayNotes: {},
     entryNotes: {},
+    sleepEntries: {},
     profile: meta.profile ?? {},
     preferences: meta.preferences ?? {},
     updatedAt: meta.updatedAt ?? new Date().toISOString(),
@@ -339,6 +387,7 @@ function splitStateByMonth(state: TrackerState) {
       entries: {},
       dayNotes: {},
       entryNotes: {},
+      sleepEntries: {},
       updatedAt: state.updatedAt,
     };
     months.set(monthKey, created);
@@ -360,6 +409,11 @@ function splitStateByMonth(state: TrackerState) {
     month.entryNotes[entryKey] = note;
   });
 
+  Object.entries(state.sleepEntries).forEach(([entryId, entry]) => {
+    const month = ensureMonth(getMonthKey(entry.endAt.slice(0, 10)));
+    month.sleepEntries[entryId] = entry;
+  });
+
   return months;
 }
 
@@ -369,6 +423,7 @@ function normalizeCloudMeta(meta: CloudTrackerMeta) {
     entries: {},
     dayNotes: {},
     entryNotes: {},
+    sleepEntries: {},
     profile: meta.profile ?? {},
     preferences: meta.preferences ?? {},
     updatedAt: meta.updatedAt ?? new Date().toISOString(),
@@ -392,7 +447,10 @@ export function getCloudMetaFromState(state: TrackerState) {
 
 export function mergeMonthState(
   state: TrackerState,
-  monthState: Pick<TrackerState, "entries" | "dayNotes" | "entryNotes">,
+  monthState: Pick<
+    TrackerState,
+    "entries" | "dayNotes" | "entryNotes" | "sleepEntries"
+  >,
   monthKeysToReplace: string[],
 ) {
   const monthKeySet = new Set(monthKeysToReplace);
@@ -413,11 +471,18 @@ export function mergeMonthState(
     ),
   );
 
+  const preservedSleepEntries = Object.fromEntries(
+    Object.entries(state.sleepEntries).filter(
+      ([, entry]) => !monthKeySet.has(getMonthKey(entry.endAt.slice(0, 10))),
+    ),
+  );
+
   return normalizeState({
     ...state,
     entries: { ...preservedEntries, ...monthState.entries },
     dayNotes: { ...preservedNotes, ...monthState.dayNotes },
     entryNotes: { ...preservedEntryNotes, ...monthState.entryNotes },
+    sleepEntries: { ...preservedSleepEntries, ...monthState.sleepEntries },
   });
 }
 
@@ -553,6 +618,7 @@ export function subscribeCloudMonths(
               entries: {},
               dayNotes: {},
               entryNotes: {},
+              sleepEntries: {},
               updatedAt: new Date(0).toISOString(),
             };
         callback(data);
@@ -595,14 +661,18 @@ export async function migrateLegacyCloudState(userId: string) {
 
 export async function loadCloudMonths(userId: string, monthKeys: string[]) {
   const firebase = ensureFirebase();
-  if (!firebase) return { entries: {}, dayNotes: {}, entryNotes: {} };
+  if (!firebase) {
+    return { entries: {}, dayNotes: {}, entryNotes: {}, sleepEntries: {} };
+  }
 
   const uniqueMonths = [...new Set(monthKeys)].sort();
   const snapshots = await Promise.all(
     uniqueMonths.map((monthKey) => getDoc(createMonthRef(firebase.db, userId, monthKey))),
   );
 
-  return snapshots.reduce<Pick<TrackerState, "entries" | "dayNotes" | "entryNotes">>(
+  return snapshots.reduce<
+    Pick<TrackerState, "entries" | "dayNotes" | "entryNotes" | "sleepEntries">
+  >(
     (accumulator, snapshot) => {
       if (!snapshot.exists()) return accumulator;
       const data = snapshot.data() as CloudTrackerMonth;
@@ -610,9 +680,13 @@ export async function loadCloudMonths(userId: string, monthKeys: string[]) {
         entries: { ...accumulator.entries, ...(data.entries ?? {}) },
         dayNotes: { ...accumulator.dayNotes, ...(data.dayNotes ?? {}) },
         entryNotes: { ...accumulator.entryNotes, ...(data.entryNotes ?? {}) },
+        sleepEntries: {
+          ...accumulator.sleepEntries,
+          ...(data.sleepEntries ?? {}),
+        },
       };
     },
-    { entries: {}, dayNotes: {}, entryNotes: {} },
+    { entries: {}, dayNotes: {}, entryNotes: {}, sleepEntries: {} },
   );
 }
 
@@ -656,6 +730,7 @@ export async function saveCloudState(
       entries: {},
       dayNotes: {},
       entryNotes: {},
+      sleepEntries: {},
       updatedAt: normalizedState.updatedAt,
     };
     batch.set(createMonthRef(firebase.db, userId, monthKey), monthDoc);
@@ -687,7 +762,7 @@ export async function resetCloudState(userId: string, state: TrackerState) {
   await resetBatch.commit();
 }
 
-type CloudMonthField = "entries" | "dayNotes" | "entryNotes";
+type CloudMonthField = "entries" | "dayNotes" | "entryNotes" | "sleepEntries";
 
 async function saveCloudMonthField(
   userId: string,
@@ -695,7 +770,7 @@ async function saveCloudMonthField(
   monthKey: string,
   field: CloudMonthField,
   key: string,
-  value: HabitEntry | string | null,
+  value: HabitEntry | SleepEntry | string | null,
 ) {
   const firebase = ensureFirebase();
   if (!firebase) return;
@@ -776,5 +851,22 @@ export function saveCloudEntryNote(
     "entryNotes",
     entryKey,
     note,
+  );
+}
+
+export function saveCloudSleepEntry(
+  userId: string,
+  state: TrackerState,
+  entry: SleepEntry | null,
+  entryId: string,
+  date: string,
+) {
+  return saveCloudMonthField(
+    userId,
+    state,
+    getMonthKey(date),
+    "sleepEntries",
+    entryId,
+    entry,
   );
 }

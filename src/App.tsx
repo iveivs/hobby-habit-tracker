@@ -24,6 +24,7 @@ import {
   saveCloudDayNote,
   saveCloudEntry,
   saveCloudEntryNote,
+  saveCloudSleepEntry,
   saveCloudState,
   saveLocalState,
   sendVerificationEmail,
@@ -38,11 +39,13 @@ import {
   type CloudTrackerMeta,
   type Habit,
   type Score,
+  type SleepEntry,
   type TrackerState,
 } from "./storage";
 import { LegendBand } from "./components/LegendBand";
 import { MobileTracker } from "./components/MobileTracker";
 import { SummaryGrid } from "./components/SummaryGrid";
+import { SleepPanel } from "./components/SleepPanel";
 import { TopBar } from "./components/TopBar";
 import { TrackerBand } from "./components/TrackerBand";
 import {
@@ -160,6 +163,13 @@ function getRequiredMonthKeys(anchorDate: string, periodDays: number) {
   return [...monthKeys].sort();
 }
 
+function getSleepMonthKeys(todayKey: string) {
+  return getMonthKeysBetween(
+    getMonthInputValue(shiftDate(todayKey, -29)),
+    getMonthInputValue(todayKey),
+  );
+}
+
 function getMonthKeysForChart(meta: CloudTrackerMeta | null, range: ChartRange, todayKey: string) {
   if (range === "week") {
     return getRequiredMonthKeys(todayKey, 7);
@@ -242,8 +252,13 @@ export function App() {
     [monthOverviewValue],
   );
   const requiredMonthKeys = useMemo(
-    () => getRequiredMonthKeys(calendarAnchorDate, calendarPeriodDays),
-    [calendarAnchorDate, calendarPeriodDays],
+    () => [
+      ...new Set([
+        ...getRequiredMonthKeys(calendarAnchorDate, calendarPeriodDays),
+        ...getSleepMonthKeys(todayKey),
+      ]),
+    ].sort(),
+    [calendarAnchorDate, calendarPeriodDays, todayKey],
   );
   const activeHabits = useMemo(() => getActiveHabits(state.habits), [state.habits]);
   const childrenByParent = useMemo(
@@ -306,7 +321,12 @@ export function App() {
       const nextPeriodDays =
         (nextMeta.preferences?.calendarPeriodDays as CalendarPeriod | undefined) ??
         defaultCalendarPeriod;
-      const monthKeys = getRequiredMonthKeys(nextAnchorDate, nextPeriodDays);
+      const monthKeys = [
+        ...new Set([
+          ...getRequiredMonthKeys(nextAnchorDate, nextPeriodDays),
+          ...getSleepMonthKeys(todayKey),
+        ]),
+      ].sort();
       const nextState = await loadCloudState(nextUserId, monthKeys);
 
       if (!nextState) return;
@@ -441,6 +461,7 @@ export function App() {
               entries: month.entries ?? {},
               dayNotes: month.dayNotes ?? {},
               entryNotes: month.entryNotes ?? {},
+              sleepEntries: month.sleepEntries ?? {},
             },
             [month.monthKey],
           );
@@ -649,6 +670,32 @@ export function App() {
         saveCloudEntry(nextUserId, nextState, date, key, entries[key] ?? null),
     );
     setPicker(null);
+  }
+
+  function addSleepEntry(entryDraft: Omit<SleepEntry, "id">) {
+    const entry: SleepEntry = { id: crypto.randomUUID(), ...entryDraft };
+    const date = entry.endAt.slice(0, 10);
+    const sleepEntries = { ...state.sleepEntries, [entry.id]: entry };
+
+    commit(
+      { ...state, sleepEntries },
+      [getMonthInputValue(date)],
+      (nextUserId, nextState) =>
+        saveCloudSleepEntry(nextUserId, nextState, entry, entry.id, date),
+    );
+  }
+
+  function deleteSleepEntry(entry: SleepEntry) {
+    const sleepEntries = { ...state.sleepEntries };
+    delete sleepEntries[entry.id];
+    const date = entry.endAt.slice(0, 10);
+
+    commit(
+      { ...state, sleepEntries },
+      [getMonthInputValue(date)],
+      (nextUserId, nextState) =>
+        saveCloudSleepEntry(nextUserId, nextState, null, entry.id, date),
+    );
   }
 
   function togglePicker(
@@ -1337,6 +1384,13 @@ export function App() {
         onToggleExercise={toggleMobileExercise}
         onToggleProject={toggleProject}
         rootHabits={rootHabits}
+        todayKey={todayKey}
+      />
+
+      <SleepPanel
+        entries={Object.values(state.sleepEntries)}
+        onAdd={addSleepEntry}
+        onDelete={deleteSleepEntry}
         todayKey={todayKey}
       />
 
