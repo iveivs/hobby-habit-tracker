@@ -66,6 +66,7 @@ export type UserPreferences = {
   expandedProjectIds?: string[];
   expandedMobileExerciseIds?: string[];
   mobileDateExpanded?: boolean;
+  sleepPanelExpanded?: boolean;
   calendarAnchorDate?: string;
   calendarPeriodDays?: number;
 };
@@ -198,6 +199,7 @@ export function createDefaultState(): TrackerState {
       expandedProjectIds: [],
       expandedMobileExerciseIds: [],
       mobileDateExpanded: false,
+      sleepPanelExpanded: false,
     },
     updatedAt: new Date().toISOString(),
   };
@@ -217,6 +219,7 @@ export function createEmptyState(): TrackerState {
       expandedProjectIds: [],
       expandedMobileExerciseIds: [],
       mobileDateExpanded: false,
+      sleepPanelExpanded: false,
       calendarAnchorDate: today,
       calendarPeriodDays: 10,
     },
@@ -308,6 +311,7 @@ function normalizeState(state: TrackerState): TrackerState {
         state.preferences?.expandedMobileExerciseIds ?? []
       ).filter((habitId): habitId is string => typeof habitId === "string"),
       mobileDateExpanded: state.preferences?.mobileDateExpanded === true,
+      sleepPanelExpanded: state.preferences?.sleepPanelExpanded === true,
       calendarAnchorDate: normalizedCalendarAnchorDate,
       calendarPeriodDays: normalizedPeriod,
     },

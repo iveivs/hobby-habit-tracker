@@ -1284,6 +1284,16 @@ export function App() {
     });
   }
 
+  function toggleSleepPanel() {
+    commit({
+      ...state,
+      preferences: {
+        ...state.preferences,
+        sleepPanelExpanded: !state.preferences?.sleepPanelExpanded,
+      },
+    });
+  }
+
   function toggleMobileExercise(habitId: string) {
     const expandedExerciseIds = new Set(
       state.preferences?.expandedMobileExerciseIds ?? [],
@@ -1389,8 +1399,10 @@ export function App() {
 
       <SleepPanel
         entries={Object.values(state.sleepEntries)}
+        isExpanded={state.preferences?.sleepPanelExpanded === true}
         onAdd={addSleepEntry}
         onDelete={deleteSleepEntry}
+        onToggle={toggleSleepPanel}
         todayKey={todayKey}
       />
 
